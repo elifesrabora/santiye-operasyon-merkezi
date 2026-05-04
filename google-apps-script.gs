@@ -45,6 +45,16 @@ function doPost(e) {
       return jsonOutput({ ok: true });
     }
 
+    if (action === "saveProject") {
+      saveProject(payload);
+      return jsonOutput({ ok: true });
+    }
+
+    if (action === "saveUser") {
+      saveUser(payload);
+      return jsonOutput({ ok: true });
+    }
+
     return jsonOutput({ error: "Unknown action" });
   } catch (error) {
     return jsonOutput({ error: String(error && error.message ? error.message : error) });
@@ -71,7 +81,10 @@ function readUsers() {
     return {
       id: row[0] || "",
       name: row[1] || "",
-      role: row[2] || ""
+      username: row[2] || "",
+      passwordHash: row[3] || "",
+      role: row[4] || "",
+      active: row[5] === "" ? true : row[5]
     };
   }).filter(function(item) { return item.id; });
 }
@@ -189,6 +202,28 @@ function saveOrder(payload) {
     payload.orderedById || "",
     payload.status || "",
     payload.note || ""
+  ]);
+}
+
+function saveProject(payload) {
+  getSheet_(SHEETS.projects).appendRow([
+    payload.id || Utilities.getUuid(),
+    payload.name || "",
+    payload.location || "",
+    payload.startDate || "",
+    payload.endDate || "",
+    payload.budget || 0
+  ]);
+}
+
+function saveUser(payload) {
+  getSheet_(SHEETS.users).appendRow([
+    payload.id || Utilities.getUuid(),
+    payload.name || "",
+    payload.username || "",
+    payload.passwordHash || "",
+    payload.role || "kullanici",
+    payload.active === false ? false : true
   ]);
 }
 
