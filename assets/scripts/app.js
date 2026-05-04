@@ -1020,15 +1020,20 @@ async function exportReportPdf(reportId) {
   const report = state.reports.find((item) => item.id === reportId);
   if (!report) return;
   const doc = await createPdfDoc("Saha Raporu");
-  await addPdfHeader(doc, "Günlük Saha Raporu", report.date, userName(report.createdById), projectName(report.projectId), report.createdAt);
-  pdfTextBlock(doc, 36, 128, [
+  const startY = await addPdfHeader(doc, "Günlük Saha Raporu", report.date, userName(report.createdById), projectName(report.projectId), report.createdAt);
+  const infoEndY = pdfKeyValueTable(doc, startY, [
+    ["Proje", projectName(report.projectId)],
+    ["Rapor Tarihi", report.date],
+    ["Rapor Saati", formatDateTime(report.createdAt || report.date)],
+    ["Raporu Giren", userName(report.createdById)],
     ["Çalışma Saati", report.workingHours || "-"],
-    ["Bugün Yapılan İşler", report.workSummary || "-"],
-    ["Yarın Planı", report.nextPlan || "-"],
-    ["Ramak Kala", report.incident || "-"],
-    ["Ek Notlar", report.notes || "-"],
-    ["Kayıt Zamanı", report.createdAt || report.date]
+    ["Ramak Kala", report.incident || "-"]
   ]);
+  pdfSectionTable(doc, "Bugün Yapılan İşler", report.workSummary || "-", infoEndY + 18);
+  const nextY = getLastAutoTableY(doc, infoEndY + 18) + 16;
+  pdfSectionTable(doc, "Yarın Planı", report.nextPlan || "-", nextY);
+  const notesY = getLastAutoTableY(doc, nextY) + 16;
+  pdfSectionTable(doc, "Ek Notlar", report.notes || "-", notesY);
   doc.save(`SahaRaporu_${safeName(projectName(report.projectId))}_${report.date}.pdf`);
 }
 
@@ -1036,10 +1041,28 @@ async function exportPuantajPdf(puantajId) {
   const item = state.puantaj.find((row) => row.id === puantajId);
   if (!item) return;
   const doc = await createPdfDoc("Puantaj");
-  await addPdfHeader(doc, "Günlük Puantaj Raporu", item.date, userName(item.createdById), userName(item.chiefId), item.createdAt);
+  const startY = await addPdfHeader(doc, "Günlük Puantaj Raporu", item.date, userName(item.createdById), userName(item.chiefId), item.createdAt);
+  const presentCount = item.workers.filter((worker) => worker.status === "present").length;
+  doc.autoTable({
+    startY,
+    theme: "grid",
+    styles: pdfBaseStyles(),
+    columnStyles: { 0: { fontStyle: "bold", cellWidth: 140 } },
+    body: [
+      ["Rapor Tarihi", item.date],
+      ["Rapor Saati", formatDateTime(item.createdAt || item.date)],
+      ["Şef", userName(item.chiefId)],
+      ["Kaydı Giren", userName(item.createdById)],
+      ["Toplam Personel", String(item.workers.length)],
+      ["Gelen Personel", String(presentCount)]
+    ]
+  });
   const body = item.workers.map((worker) => [worker.name, projectName(worker.projectId), worker.job || "-", worker.status === "present" ? "Geldi" : "Gelmedi"]);
   doc.autoTable({
-    startY: 128,
+    startY: getLastAutoTableY(doc, startY) + 18,
+    theme: "striped",
+    styles: pdfBaseStyles(),
+    headStyles: pdfHeadStyles(),
     head: [["Personel", "Proje", "Görev", "Durum"]],
     body
   });
@@ -1050,8 +1073,11 @@ async function exportOrderPdf(orderId) {
   const order = state.orders.find((item) => item.id === orderId);
   if (!order) return;
   const doc = await createPdfDoc("Sipariş");
-  await addPdfHeader(doc, "Beton / Demir Sipariş Raporu", order.date, userName(order.orderedById), projectName(order.projectId), order.createdAt);
-  pdfTextBlock(doc, 36, 128, [
+  const startY = await addPdfHeader(doc, "Beton / Demir Sipariş Raporu", order.date, userName(order.orderedById), projectName(order.projectId), order.createdAt);
+  const infoEndY = pdfKeyValueTable(doc, startY, [
+    ["Proje", projectName(order.projectId)],
+    ["Sipariş Tarihi", order.date],
+    ["Kayıt Saati", formatDateTime(order.createdAt || order.date)],
     ["Malzeme", order.material || "-"],
     ["Özellik", order.spec || "-"],
     ["Miktar", `${order.quantity || 0} ${order.unit || ""}`],
@@ -1060,9 +1086,9 @@ async function exportOrderPdf(orderId) {
     ["Toplam", formatCurrency(order.total || 0)],
     ["Fiyat Kaynağı", order.priceSource || "-"],
     ["Durum", order.status || "-"],
-    ["Not", order.note || "-"],
-    ["Kayıt Zamanı", order.createdAt || order.date]
+    ["Giren Kullanıcı", userName(order.orderedById)]
   ]);
+  pdfSectionTable(doc, "Not", order.note || "-", infoEndY + 18);
   doc.save(`Siparis_${safeName(projectName(order.projectId))}_${order.date}.pdf`);
 }
 
@@ -1071,10 +1097,12 @@ async function exportProjectDetailPdf() {
   const project = state.projects.find((item) => item.id === state.selectedProjectId);
   const detail = getProjectDetailData(state.selectedProjectId);
   const doc = await createPdfDoc("Proje Detay");
-  await addPdfHeader(doc, "Şantiye Detay Raporu", todayStr(), state.currentUser?.name || "-", project?.name || "-", new Date().toISOString());
-  pdfTextBlock(doc, 36, 128, [
+  const generatedAt = new Date().toISOString();
+  const startY = await addPdfHeader(doc, "Şantiye Detay Raporu", todayStr(), state.currentUser?.name || "-", project?.name || "-", generatedAt);
+  const summaryEndY = pdfKeyValueTable(doc, startY, [
     ["Konum", project?.location || "-"],
     ["Tarih Aralığı", projectDurationText(project?.startDate, project?.endDate)],
+    ["Filtre", projectFilterLabel()],
     ["Bütçe", formatCurrency(project?.budget || 0)],
     ["Sipariş Maliyeti", formatCurrency(detail.totalCost)],
     ["Rapor Sayısı", String(detail.reports.length)],
@@ -1082,7 +1110,10 @@ async function exportProjectDetailPdf() {
     ["Personel", String(detail.workerCount)]
   ]);
   doc.autoTable({
-    startY: 230,
+    startY: summaryEndY + 18,
+    theme: "striped",
+    styles: pdfBaseStyles(),
+    headStyles: pdfHeadStyles(),
     head: [["Özet Alanı", "Değer"]],
     body: [
       ["Beton Maliyeti", formatCurrency(detail.concreteCost)],
@@ -1090,30 +1121,49 @@ async function exportProjectDetailPdf() {
       ["Bütçe Kullanımı", `%${detail.budgetUsage}`]
     ]
   });
-  doc.addPage();
-  await addPdfHeader(doc, "Şantiye Detay Raporu / Saha Raporları", todayStr(), state.currentUser?.name || "-", project?.name || "-", new Date().toISOString());
-  doc.text("Saha Raporları", 36, 156);
-  doc.autoTable({
-    startY: 170,
-    head: [["Tarih", "Kullanıcı", "Çalışma", "Ramak Kala"]],
-    body: detail.reports.map((item) => [item.date, userName(item.createdById), item.workingHours || "-", item.incident || "-"])
-  });
-  doc.addPage();
-  await addPdfHeader(doc, "Şantiye Detay Raporu / Siparişler", todayStr(), state.currentUser?.name || "-", project?.name || "-", new Date().toISOString());
-  doc.text("Siparişler", 36, 156);
-  doc.autoTable({
-    startY: 170,
-    head: [["Tarih", "Malzeme", "Tedarikçi", "Toplam", "Giren"]],
-    body: detail.orders.map((item) => [item.date, item.material, item.supplier || "-", formatCurrency(item.total || 0), userName(item.orderedById)])
-  });
-  doc.addPage();
-  await addPdfHeader(doc, "Şantiye Detay Raporu / Puantaj", todayStr(), state.currentUser?.name || "-", project?.name || "-", new Date().toISOString());
-  doc.text("Puantaj", 36, 156);
-  doc.autoTable({
-    startY: 170,
-    head: [["Tarih", "Kaydı Giren", "Personel", "Gelen"]],
-    body: detail.puantaj.map((item) => [item.date, userName(item.createdById), item.workers.length, item.workers.filter((w) => w.status === "present").length])
-  });
+
+  if (detail.reports.length) {
+    doc.addPage();
+    const reportsY = await addPdfHeader(doc, "Şantiye Detay / Saha Raporları", todayStr(), state.currentUser?.name || "-", project?.name || "-", generatedAt);
+    doc.autoTable({
+      startY: reportsY,
+      theme: "striped",
+      styles: pdfBaseStyles(),
+      headStyles: pdfHeadStyles(),
+      head: [["Tarih", "Kullanıcı", "Çalışma Saati", "Ramak Kala", "Bugün Yapılan İş"]],
+      body: detail.reports.map((item) => [item.date, userName(item.createdById), item.workingHours || "-", item.incident || "-", item.workSummary || "-"])
+    });
+  }
+
+  if (detail.orders.length) {
+    doc.addPage();
+    const ordersY = await addPdfHeader(doc, "Şantiye Detay / Siparişler", todayStr(), state.currentUser?.name || "-", project?.name || "-", generatedAt);
+    doc.autoTable({
+      startY: ordersY,
+      theme: "striped",
+      styles: pdfBaseStyles(),
+      headStyles: pdfHeadStyles(),
+      head: [["Tarih", "Malzeme", "Tedarikçi", "Miktar", "Toplam", "Giren"]],
+      body: detail.orders.map((item) => [item.date, item.material, item.supplier || "-", `${item.quantity || 0} ${item.unit || ""}`, formatCurrency(item.total || 0), userName(item.orderedById)])
+    });
+  }
+
+  if (detail.puantaj.length) {
+    doc.addPage();
+    const puantajY = await addPdfHeader(doc, "Şantiye Detay / Puantaj", todayStr(), state.currentUser?.name || "-", project?.name || "-", generatedAt);
+    doc.autoTable({
+      startY: puantajY,
+      theme: "striped",
+      styles: pdfBaseStyles(),
+      headStyles: pdfHeadStyles(),
+      head: [["Tarih", "Kaydı Giren", "Toplam Personel", "Gelen", "Gelmedi"]],
+      body: detail.puantaj.map((item) => {
+        const present = item.workers.filter((w) => w.status === "present").length;
+        return [item.date, userName(item.createdById), item.workers.length, present, item.workers.length - present];
+      })
+    });
+  }
+
   doc.save(`SantiyeDetay_${safeName(project?.name || "Proje")}.pdf`);
 }
 
@@ -1130,24 +1180,45 @@ async function createPdfDoc(subject) {
 }
 
 async function addPdfHeader(doc, title, date, person, context, createdAt) {
-  doc.setFillColor(24, 29, 51);
-  doc.rect(0, 0, 595, 92, "F");
+  doc.setDrawColor(237, 28, 36);
+  doc.setLineWidth(2);
+  doc.line(36, 34, 559, 34);
   if (doc.__logoDataUrl) {
-    doc.addImage(doc.__logoDataUrl, "JPEG", 36, 18, 56, 56);
+    doc.addImage(doc.__logoDataUrl, "JPEG", 36, 44, 50, 50);
   }
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
-  doc.text("AYAZLAR YAPI", 106, 42);
-  doc.setFontSize(11);
-  doc.text("Şantiye Operasyon Merkezi", 106, 60);
-  doc.setFontSize(16);
-  doc.text(title, 36, 102);
-  doc.setTextColor(60, 67, 80);
+  doc.setTextColor(26, 33, 56);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(17);
+  doc.text(state.settings.companyName || "AYAZLAR YAPI", 98, 64);
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text(`Tarih: ${date}`, 36, 118);
-  doc.text(`Saat: ${formatDateTime(createdAt || new Date().toISOString())}`, 36, 134);
-  doc.text(`Raporu Alan / Oluşturan: ${person}`, 220, 118);
-  doc.text(`Bağlam: ${context}`, 430, 118, { align: "right" });
+  doc.setTextColor(90, 96, 115);
+  doc.text("Şantiye Operasyon Merkezi", 98, 80);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(36, 40, 52);
+  doc.text(title, 36, 122);
+  doc.autoTable({
+    startY: 136,
+    theme: "grid",
+    styles: pdfBaseStyles(),
+    tableLineColor: [222, 226, 235],
+    tableLineWidth: 0.5,
+    columnStyles: {
+      0: { fontStyle: "bold", cellWidth: 105 },
+      1: { cellWidth: 150 },
+      2: { fontStyle: "bold", cellWidth: 105 },
+      3: { cellWidth: 163 }
+    },
+    body: [[
+      "Tarih", date,
+      "Saat", formatDateTime(createdAt || new Date().toISOString())
+    ], [
+      "Oluşturan", person,
+      "Bağlam", context
+    ]]
+  });
+  return getLastAutoTableY(doc, 170) + 14;
 }
 
 function pdfTextBlock(doc, x, y, rows) {
@@ -1165,6 +1236,59 @@ function pdfTextBlock(doc, x, y, rows) {
 
 function safeName(value) {
   return String(value || "rapor").replaceAll(/\s+/g, "_").replaceAll(/[^\wğüşöçıİĞÜŞÖÇ-]/g, "");
+}
+
+function pdfKeyValueTable(doc, startY, rows) {
+  doc.autoTable({
+    startY,
+    theme: "grid",
+    styles: pdfBaseStyles(),
+    columnStyles: { 0: { fontStyle: "bold", cellWidth: 150 } },
+    body: rows
+  });
+  return getLastAutoTableY(doc, startY);
+}
+
+function pdfSectionTable(doc, title, text, startY) {
+  doc.autoTable({
+    startY,
+    theme: "grid",
+    styles: pdfBaseStyles(),
+    headStyles: pdfHeadStyles(),
+    bodyStyles: { valign: "top", lineColor: [226, 230, 238], lineWidth: 0.5, textColor: [46, 50, 62] },
+    head: [[title]],
+    body: [[text]]
+  });
+}
+
+function pdfBaseStyles() {
+  return {
+    font: "helvetica",
+    fontSize: 10,
+    cellPadding: 7,
+    textColor: [46, 50, 62],
+    lineColor: [226, 230, 238],
+    lineWidth: 0.5
+  };
+}
+
+function pdfHeadStyles() {
+  return {
+    fillColor: [32, 38, 64],
+    textColor: [255, 255, 255],
+    fontStyle: "bold"
+  };
+}
+
+function getLastAutoTableY(doc, fallback) {
+  return doc.lastAutoTable?.finalY || fallback;
+}
+
+function projectFilterLabel() {
+  const from = els.projectFilterFrom.value;
+  const to = els.projectFilterTo.value;
+  if (!from && !to) return "Tüm kayıtlar";
+  return `${from || "Başlangıç yok"} - ${to || "Bitiş yok"}`;
 }
 
 async function loadLogoDataUrl() {
