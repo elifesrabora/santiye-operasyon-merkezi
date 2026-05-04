@@ -1,143 +1,195 @@
-const SPREADSHEET_ID = '17WZGVKxZ2cfSxEGkLPRQazHNFU4iYBAqMDYy99ZfErM';
+const SPREADSHEET_ID = "17WZGVKxZ2cfSxEGkLPRQazHNFU4iYBAqMDYy99ZfErM";
 const SHEETS = {
-  projects: 'Projects',
-  reports: 'Reports',
-  puantaj: 'Puantaj',
-  workers: 'Workers'
+  projects: "Projects",
+  users: "Users",
+  reports: "Reports",
+  puantaj: "Puantaj",
+  workers: "Workers",
+  orders: "Orders"
 };
 
 function doGet(e) {
-  const resource = (e && e.parameter && e.parameter.resource) || 'bootstrap';
+  const resource = (e && e.parameter && e.parameter.resource) || "bootstrap";
 
-  if (resource === 'bootstrap') {
+  if (resource === "bootstrap") {
     return jsonOutput({
       projects: readProjects(),
+      users: readUsers(),
       reports: readReports(),
-      puantaj: readPuantaj()
+      puantaj: readPuantaj(),
+      orders: readOrders()
     });
   }
 
-  return jsonOutput({ error: 'Unknown resource' }, 400);
+  return jsonOutput({ error: "Unknown resource" });
 }
 
 function doPost(e) {
   try {
-    const body = JSON.parse(e.postData.contents || '{}');
+    const body = JSON.parse((e && e.postData && e.postData.contents) || "{}");
     const action = body.action;
     const payload = body.payload || {};
 
-    if (action === 'saveReport') {
+    if (action === "saveReport") {
       saveReport(payload);
       return jsonOutput({ ok: true });
     }
 
-    if (action === 'savePuantaj') {
+    if (action === "savePuantaj") {
       savePuantaj(payload);
       return jsonOutput({ ok: true });
     }
 
-    return jsonOutput({ error: 'Unknown action' }, 400);
+    if (action === "saveOrder") {
+      saveOrder(payload);
+      return jsonOutput({ ok: true });
+    }
+
+    return jsonOutput({ error: "Unknown action" });
   } catch (error) {
-    return jsonOutput({ error: String(error && error.message ? error.message : error) }, 500);
+    return jsonOutput({ error: String(error && error.message ? error.message : error) });
   }
 }
 
 function readProjects() {
   const rows = getSheetValues_(SHEETS.projects);
-  return rows.map((row) => ({
-    id: row[0] || '',
-    name: row[1] || '',
-    location: row[2] || '',
-    progress: Number(row[3] || 0),
-    budget: Number(row[4] || 0)
-  })).filter((item) => item.id);
+  return rows.map(function(row) {
+    return {
+      id: row[0] || "",
+      name: row[1] || "",
+      location: row[2] || "",
+      startDate: normalizeDate_(row[3]),
+      endDate: normalizeDate_(row[4]),
+      budget: Number(row[5] || 0)
+    };
+  }).filter(function(item) { return item.id; });
+}
+
+function readUsers() {
+  const rows = getSheetValues_(SHEETS.users);
+  return rows.map(function(row) {
+    return {
+      id: row[0] || "",
+      name: row[1] || "",
+      role: row[2] || ""
+    };
+  }).filter(function(item) { return item.id; });
 }
 
 function readReports() {
   const rows = getSheetValues_(SHEETS.reports);
-  return rows.map((row) => ({
-    id: row[0] || '',
-    projectId: row[1] || '',
-    date: normalizeDate_(row[2]),
-    shift: row[3] || '',
-    weather: row[4] || '',
-    temperature: String(row[5] || ''),
-    workingHours: row[6] || '',
-    workSummary: row[7] || '',
-    nextPlan: row[8] || '',
-    safetyPpe: row[9] || '',
-    toolboxTalk: row[10] || '',
-    incident: row[11] || '',
-    notes: row[12] || ''
-  })).filter((item) => item.id);
+  return rows.map(function(row) {
+    return {
+      id: row[0] || "",
+      projectId: row[1] || "",
+      date: normalizeDate_(row[2]),
+      workingHours: row[3] || "",
+      workSummary: row[4] || "",
+      nextPlan: row[5] || "",
+      incident: row[6] || "",
+      notes: row[7] || ""
+    };
+  }).filter(function(item) { return item.id; });
 }
 
 function readPuantaj() {
   const puantajRows = getSheetValues_(SHEETS.puantaj);
   const workerRows = getSheetValues_(SHEETS.workers);
-
   const workersByEntry = {};
-  workerRows.forEach((row) => {
+
+  workerRows.forEach(function(row) {
     const puantajId = row[0];
     if (!puantajId) return;
     if (!workersByEntry[puantajId]) workersByEntry[puantajId] = [];
     workersByEntry[puantajId].push({
-      name: row[1] || '',
-      projectId: row[2] || '',
-      job: row[3] || '',
-      status: row[4] || 'present'
+      name: row[1] || "",
+      projectId: row[2] || "",
+      job: row[3] || "",
+      status: row[4] || "present"
     });
   });
 
-  return puantajRows.map((row) => ({
-    id: row[0] || '',
-    date: normalizeDate_(row[1]),
-    chief: row[2] || '',
-    defaultProjectId: row[3] || '',
-    workers: workersByEntry[row[0]] || []
-  })).filter((item) => item.id);
+  return puantajRows.map(function(row) {
+    return {
+      id: row[0] || "",
+      date: normalizeDate_(row[1]),
+      chiefId: row[2] || "",
+      workers: workersByEntry[row[0]] || []
+    };
+  }).filter(function(item) { return item.id; });
+}
+
+function readOrders() {
+  const rows = getSheetValues_(SHEETS.orders);
+  return rows.map(function(row) {
+    return {
+      id: row[0] || "",
+      projectId: row[1] || "",
+      date: normalizeDate_(row[2]),
+      material: row[3] || "",
+      spec: row[4] || "",
+      quantity: Number(row[5] || 0),
+      unit: row[6] || "",
+      supplier: row[7] || "",
+      unitPrice: Number(row[8] || 0),
+      total: Number(row[9] || 0),
+      priceSource: row[10] || "",
+      orderedById: row[11] || "",
+      status: row[12] || "",
+      note: row[13] || ""
+    };
+  }).filter(function(item) { return item.id; });
 }
 
 function saveReport(payload) {
-  const sheet = getSheet_(SHEETS.reports);
-  sheet.appendRow([
+  getSheet_(SHEETS.reports).appendRow([
     payload.id || Utilities.getUuid(),
-    payload.projectId || '',
-    payload.date || '',
-    payload.shift || '',
-    payload.weather || '',
-    payload.temperature || '',
-    payload.workingHours || '',
-    payload.workSummary || '',
-    payload.nextPlan || '',
-    payload.safetyPpe || '',
-    payload.toolboxTalk || '',
-    payload.incident || '',
-    payload.notes || ''
+    payload.projectId || "",
+    payload.date || "",
+    payload.workingHours || "",
+    payload.workSummary || "",
+    payload.nextPlan || "",
+    payload.incident || "",
+    payload.notes || ""
   ]);
 }
 
 function savePuantaj(payload) {
   const puantajId = payload.id || Utilities.getUuid();
-  const puantajSheet = getSheet_(SHEETS.puantaj);
-  const workersSheet = getSheet_(SHEETS.workers);
-
-  puantajSheet.appendRow([
+  getSheet_(SHEETS.puantaj).appendRow([
     puantajId,
-    payload.date || '',
-    payload.chief || '',
-    payload.defaultProjectId || ''
+    payload.date || "",
+    payload.chiefId || ""
   ]);
 
-  (payload.workers || []).forEach((worker) => {
-    workersSheet.appendRow([
+  (payload.workers || []).forEach(function(worker) {
+    getSheet_(SHEETS.workers).appendRow([
       puantajId,
-      worker.name || '',
-      worker.projectId || '',
-      worker.job || '',
-      worker.status || 'present'
+      worker.name || "",
+      worker.projectId || "",
+      worker.job || "",
+      worker.status || "present"
     ]);
   });
+}
+
+function saveOrder(payload) {
+  getSheet_(SHEETS.orders).appendRow([
+    payload.id || Utilities.getUuid(),
+    payload.projectId || "",
+    payload.date || "",
+    payload.material || "",
+    payload.spec || "",
+    payload.quantity || 0,
+    payload.unit || "",
+    payload.supplier || "",
+    payload.unitPrice || 0,
+    payload.total || 0,
+    payload.priceSource || "",
+    payload.orderedById || "",
+    payload.status || "",
+    payload.note || ""
+  ]);
 }
 
 function getSheetValues_(sheetName) {
@@ -151,15 +203,15 @@ function getSheetValues_(sheetName) {
 function getSheet_(sheetName) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName(sheetName);
-  if (!sheet) throw new Error('Sheet not found: ' + sheetName);
+  if (!sheet) throw new Error("Sheet not found: " + sheetName);
   return sheet;
 }
 
 function normalizeDate_(value) {
-  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value)) {
-    return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value)) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), "yyyy-MM-dd");
   }
-  return value || '';
+  return value || "";
 }
 
 function jsonOutput(payload) {
@@ -167,4 +219,3 @@ function jsonOutput(payload) {
     .createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
 }
-
