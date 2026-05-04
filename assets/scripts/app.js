@@ -9,7 +9,7 @@ const STORAGE_KEYS = {
 
 const DEFAULT_SETTINGS = {
   apiBaseUrl: "https://script.google.com/macros/s/AKfycbxsGhQNPJLG2UpWBDr6iUntH_XPT2iSUukKvf2gttwTpwq2o-tYzloTja8HGEwLLLU5Cg/exec",
-  companyName: "Ayazlar Yapi",
+  companyName: "Ayazlar Yapı",
   sheetNote: "Ana Google Sheet: https://docs.google.com/spreadsheets/d/17WZGVKxZ2cfSxEGkLPRQazHNFU4iYBAqMDYy99ZfErM/edit?usp=sharing"
 };
 
@@ -27,13 +27,13 @@ const state = {
 const AUTO_SYNC_MS = 60000;
 
 const viewMeta = {
-  dashboard: ["Dashboard", "Saha, puantaj, siparis ve santiye ozetini tek ekranda izleyin."],
-  report: ["Gunluk Saha Raporu", "Projeye ait gunluk ilerleme, plan ve ramak kala kaydini girin."],
-  puantaj: ["Puantaj", "Admin tarafindan tanimlanan sef ve projelerle gunluk personel kaydi tutun."],
-  orders: ["Siparisler", "Beton, demir ve diger siparislerin fiyat, kaynak ve giren kisi takibini yapin."],
-  projects: ["Santiyeler", "Projeleri ve kullanicilari yonetin, proje bazli toplu ozetleri gorun."],
-  records: ["Kayitlar", "Saha raporu, puantaj ve siparis gecmisini bir arada inceleyin."],
-  settings: ["Ayarlar", "Github Pages ve Google Sheets baglantisini yonetin."]
+  dashboard: ["Dashboard", "Saha, puantaj, sipariş ve şantiye özetini tek ekranda izleyin."],
+  report: ["Günlük Saha Raporu", "Projeye ait günlük ilerleme, plan ve ramak kala kaydını girin."],
+  puantaj: ["Puantaj", "Admin tarafından tanımlanan şef ve projelerle günlük personel kaydı tutun."],
+  orders: ["Siparişler", "Beton, demir ve diğer siparişlerin fiyat, kaynak ve giren kişi takibini yapın."],
+  projects: ["Şantiyeler", "Projeleri ve kullanıcıları yönetin, proje bazlı toplu özetleri görün."],
+  records: ["Kayıtlar", "Saha raporu, puantaj ve sipariş geçmişini bir arada inceleyin."],
+  settings: ["Ayarlar", "GitHub Pages ve Google Sheets bağlantısını yönetin."]
 };
 
 const els = {
@@ -88,6 +88,9 @@ boot();
 
 function boot() {
   wireNavigation();
+  document.querySelectorAll("[data-view-jump]").forEach((button) => {
+    button.addEventListener("click", () => setView(button.dataset.viewJump));
+  });
   hydrateForms();
   renderAll();
   setConnectionPill();
@@ -155,7 +158,7 @@ function renderAll() {
 function renderProjectOptions() {
   const projectOptions = state.projects.length
     ? state.projects.map((project) => `<option value="${project.id}">${escapeHtml(project.name)}</option>`).join("")
-    : '<option value="">Once proje ekleyin</option>';
+    : '<option value="">Önce proje ekleyin</option>';
 
   const filterOptions = ['<option value="all">Tum Projeler</option>']
     .concat(state.projects.map((project) => `<option value="${project.id}">${escapeHtml(project.name)}</option>`))
@@ -172,7 +175,7 @@ function renderProjectOptions() {
 function renderUserOptions() {
   const userOptions = state.users.length
     ? state.users.map((user) => `<option value="${user.id}">${escapeHtml(user.name)}${user.role ? ` · ${escapeHtml(user.role)}` : ""}</option>`).join("")
-    : '<option value="">Once kullanici ekleyin</option>';
+    : '<option value="">Önce kullanıcı ekleyin</option>';
 
   [els.puantajChief, els.orderBy].forEach((select) => {
     select.innerHTML = userOptions;
@@ -187,10 +190,10 @@ function renderDashboard() {
   const totalOrderCost = state.orders.reduce((sum, item) => sum + Number(item.total || 0), 0);
 
   els.kpiGrid.innerHTML = [
-    kpiCard("Aktif Proje", totalProjects, `${countToday(state.reports)} bugun rapor girisi`),
-    kpiCard("Siparis", totalOrders, `${formatCurrency(totalOrderCost)} toplam maliyet`),
-    kpiCard("Puantaj", state.puantaj.length, `${totalPresentCount()} gelen personel kaydi`),
-    kpiCard("Kullanici", state.users.length, "Admin tarafindan tanimli sef ve ekip")
+    kpiCard("Aktif Proje", totalProjects, `${countToday(state.reports)} bugün rapor girişi`),
+    kpiCard("Sipariş", totalOrders, `${formatCurrency(totalOrderCost)} toplam maliyet`),
+    kpiCard("Puantaj", state.puantaj.length, `${totalPresentCount()} gelen personel kaydı`),
+    kpiCard("Kullanıcı", state.users.length, "Admin tarafından tanımlı şef ve ekip")
   ].join("");
 
   els.projectList.innerHTML = state.projects.length
@@ -203,18 +206,18 @@ function renderDashboard() {
                 <span class="tag">${summary.reportCount} rapor</span>
               </div>
               <div class="project-meta">${escapeHtml(summary.location || "Konum girilmedi")} · ${summary.durationText}</div>
-              <div class="project-meta">Siparis maliyeti: ${formatCurrency(summary.totalCost)} · Puantaj personeli: ${summary.workerCount}</div>
+              <div class="project-meta">Sipariş maliyeti: ${formatCurrency(summary.totalCost)} · Puantaj personeli: ${summary.workerCount}</div>
               <div class="progress"><span style="width:${summary.progress}%"></span></div>
             </article>
           `
         )
         .join("")
-    : emptyState("Henuz proje eklenmedi. Once Santiyeler sekmesinden proje girin.");
+    : emptyState("Henüz proje eklenmedi. Önce Şantiyeler sekmesinden proje girin.");
 
   const feed = [
-    ...state.reports.map((item) => ({ type: "Rapor", date: item.date, text: `${projectName(item.projectId)} icin saha raporu girildi.` })),
-    ...state.puantaj.map((item) => ({ type: "Puantaj", date: item.date, text: `${userName(item.chiefId)} tarafindan ${item.workers.length} kisilik puantaj kaydi olusturuldu.` })),
-    ...state.orders.map((item) => ({ type: "Siparis", date: item.date, text: `${projectName(item.projectId)} icin ${item.material} siparisi olusturuldu.` }))
+    ...state.reports.map((item) => ({ type: "Rapor", date: item.date, text: `${projectName(item.projectId)} için saha raporu girildi.` })),
+    ...state.puantaj.map((item) => ({ type: "Puantaj", date: item.date, text: `${userName(item.chiefId)} tarafından ${item.workers.length} kişilik puantaj kaydı oluşturuldu.` })),
+    ...state.orders.map((item) => ({ type: "Sipariş", date: item.date, text: `${projectName(item.projectId)} için ${item.material} siparişi oluşturuldu.` }))
   ]
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 8);
@@ -233,7 +236,7 @@ function renderDashboard() {
           `
         )
         .join("")
-    : '<div class="timeline-item"><p>Henuz hareket yok. Once proje, kullanici ve kayit girisi yapin.</p></div>';
+    : '<div class="timeline-item"><p>Henüz hareket yok. Önce proje, kullanıcı ve kayıt girişi yapın.</p></div>';
 }
 
 function renderOrders() {
@@ -243,7 +246,7 @@ function renderOrders() {
         .sort((a, b) => b.date.localeCompare(a.date))
         .map(renderOrderCard)
         .join("")
-    : emptyState("Henuz siparis girilmedi.");
+    : emptyState("Henüz sipariş girilmedi.");
 }
 
 function renderProjectManagement() {
@@ -260,7 +263,7 @@ function renderProjectManagement() {
           `
         )
         .join("")
-    : emptyState("Henuz kullanici eklenmedi.");
+    : emptyState("Henüz kullanıcı eklenmedi.");
 
   els.siteSummaryList.innerHTML = state.projects.length
     ? buildProjectSummaries()
@@ -272,14 +275,14 @@ function renderProjectManagement() {
                 <span class="tag">${summary.progress}%</span>
               </div>
               <div class="project-meta">${escapeHtml(summary.location || "Konum girilmedi")} · ${summary.durationText}</div>
-              <div class="project-meta">Butce: ${formatCurrency(summary.budget)} · Siparis maliyeti: ${formatCurrency(summary.totalCost)}</div>
+              <div class="project-meta">Bütçe: ${formatCurrency(summary.budget)} · Sipariş maliyeti: ${formatCurrency(summary.totalCost)}</div>
               <div class="project-meta">Rapor: ${summary.reportCount} · Puantaj: ${summary.puantajCount} · Personel: ${summary.workerCount}</div>
               <div class="progress"><span style="width:${summary.progress}%"></span></div>
             </article>
           `
         )
         .join("")
-    : emptyState("Henuz santiye eklenmedi.");
+    : emptyState("Henüz şantiye eklenmedi.");
 }
 
 function renderRecords() {
@@ -310,15 +313,15 @@ function renderRecords() {
 
   els.reportRecords.innerHTML = filteredReports.length
     ? filteredReports.slice().sort((a, b) => b.date.localeCompare(a.date)).map(renderReportRecord).join("")
-    : emptyState("Filtreye uygun saha raporu bulunamadi.");
+    : emptyState("Filtreye uygun saha raporu bulunamadı.");
 
   els.puantajRecords.innerHTML = filteredPuantaj.length
     ? filteredPuantaj.slice().sort((a, b) => b.date.localeCompare(a.date)).map(renderPuantajRecord).join("")
-    : emptyState("Filtreye uygun puantaj bulunamadi.");
+    : emptyState("Filtreye uygun puantaj bulunamadı.");
 
   els.recordsOrderList.innerHTML = filteredOrders.length
     ? filteredOrders.slice().sort((a, b) => b.date.localeCompare(a.date)).map(renderOrderCard).join("")
-    : emptyState("Filtreye uygun siparis bulunamadi.");
+    : emptyState("Filtreye uygun sipariş bulunamadı.");
 }
 
 function renderReportRecord(item) {
@@ -328,9 +331,9 @@ function renderReportRecord(item) {
         <strong>${escapeHtml(projectName(item.projectId))}</strong>
         <span class="tag">${item.date}</span>
       </div>
-      <div class="record-meta">Calisma saati: ${escapeHtml(item.workingHours || "-")}</div>
-      <p>${escapeHtml(item.workSummary || "Bugun yapilan is bilgisi yok.")}</p>
-      <div class="record-meta">Yarin plani: ${escapeHtml(item.nextPlan || "-")}</div>
+      <div class="record-meta">Çalışma saati: ${escapeHtml(item.workingHours || "-")}</div>
+      <p>${escapeHtml(item.workSummary || "Bugün yapılan iş bilgisi yok.")}</p>
+      <div class="record-meta">Yarın planı: ${escapeHtml(item.nextPlan || "-")}</div>
       <div class="record-meta">Ramak kala: ${escapeHtml(item.incident || "-")}</div>
     </article>
   `;
@@ -344,7 +347,7 @@ function renderPuantajRecord(item) {
         <strong>${escapeHtml(userName(item.chiefId))}</strong>
         <span class="tag">${item.date}</span>
       </div>
-      <div class="record-meta">${item.workers.length} kisi · ${present} geldi · ${item.workers.length - present} gelmedi</div>
+      <div class="record-meta">${item.workers.length} kişi · ${present} geldi · ${item.workers.length - present} gelmedi</div>
       <p>${item.workers.map((worker) => `${escapeHtml(worker.name)} / ${escapeHtml(projectName(worker.projectId))} / ${escapeHtml(worker.job || "-")}`).join(", ")}</p>
     </article>
   `;
@@ -358,7 +361,7 @@ function renderOrderCard(item) {
         <span class="tag">${item.date}</span>
       </div>
       <div class="record-meta">${escapeHtml(item.material)} · ${escapeHtml(item.spec || "-")} · ${escapeHtml(item.quantity)} ${escapeHtml(item.unit || "")}</div>
-      <div class="record-meta">Tedarikci: ${escapeHtml(item.supplier || "-")} · Giren: ${escapeHtml(userName(item.orderedById))}</div>
+      <div class="record-meta">Tedarikçi: ${escapeHtml(item.supplier || "-")} · Giren: ${escapeHtml(userName(item.orderedById))}</div>
       <div class="record-meta">Birim fiyat: ${formatCurrency(item.unitPrice || 0)} · Toplam: ${formatCurrency(item.total || 0)}</div>
       <div class="record-meta">Kaynak: ${escapeHtml(item.priceSource || "-")} · Durum: ${escapeHtml(item.status || "-")}</div>
       ${item.note ? `<p>${escapeHtml(item.note)}</p>` : ""}
@@ -369,7 +372,7 @@ function renderOrderCard(item) {
 async function onSaveReport(event) {
   event.preventDefault();
   if (!state.projects.length) {
-    showToast("Once proje ekleyin.");
+    showToast("Önce proje ekleyin.");
     setView("projects");
     return;
   }
@@ -404,7 +407,7 @@ function addWorker(worker = null) {
 
   projectSelect.innerHTML = state.projects.length
     ? state.projects.map((project) => `<option value="${project.id}">${escapeHtml(project.name)}</option>`).join("")
-    : '<option value="">Once proje ekleyin</option>';
+    : '<option value="">Önce proje ekleyin</option>';
   projectSelect.disabled = state.projects.length === 0;
 
   if (worker) {
@@ -444,14 +447,14 @@ function readWorkers() {
 
 async function onSavePuantaj() {
   if (!state.users.length) {
-    showToast("Once kullanici / sef ekleyin.");
+    showToast("Önce kullanıcı / şef ekleyin.");
     setView("projects");
     return;
   }
 
   const workers = readWorkers();
   if (!workers.length) {
-    showToast("Kaydetmek icin en az bir personel girin.");
+    showToast("Kaydetmek için en az bir personel girin.");
     return;
   }
 
@@ -479,7 +482,7 @@ function resetPuantajForm() {
 function exportPuantajCsv() {
   const workers = readWorkers();
   if (!workers.length) {
-    showToast("CSV icin once personel ekleyin.");
+    showToast("CSV için önce personel ekleyin.");
     return;
   }
 
@@ -501,12 +504,12 @@ function exportPuantajCsv() {
 async function onSaveOrder(event) {
   event.preventDefault();
   if (!state.projects.length) {
-    showToast("Once proje ekleyin.");
+    showToast("Önce proje ekleyin.");
     setView("projects");
     return;
   }
   if (!state.users.length) {
-    showToast("Once kullanici ekleyin.");
+    showToast("Önce kullanıcı ekleyin.");
     setView("projects");
     return;
   }
@@ -539,7 +542,7 @@ async function onSaveOrder(event) {
   els.orderDate.value = todayStr();
   syncOrderUnit();
   updateOrderTotal();
-  showToast(remoteSaved ? "Siparis kaydedildi." : "Siparis yerelde kaydedildi.");
+  showToast(remoteSaved ? "Sipariş kaydedildi." : "Sipariş yerelde kaydedildi.");
 }
 
 async function onSaveProject(event) {
@@ -547,7 +550,7 @@ async function onSaveProject(event) {
   const form = new FormData(els.projectForm);
   const name = String(form.get("name") || "").trim();
   if (!name) {
-    showToast("Proje adi gerekli.");
+    showToast("Proje adı gerekli.");
     return;
   }
 
@@ -572,7 +575,7 @@ async function onSaveUser(event) {
   const form = new FormData(els.userForm);
   const name = String(form.get("name") || "").trim();
   if (!name) {
-    showToast("Kullanici adi gerekli.");
+    showToast("Kullanıcı adı gerekli.");
     return;
   }
 
@@ -586,7 +589,7 @@ async function onSaveUser(event) {
   persist(STORAGE_KEYS.users, state.users);
   renderAll();
   els.userForm.reset();
-  showToast("Kullanici eklendi.");
+  showToast("Kullanıcı eklendi.");
 }
 
 function exportAllJson() {
@@ -600,7 +603,7 @@ function exportAllJson() {
     orders: state.orders
   };
   downloadFile("santiye-operasyon-merkezi.json", JSON.stringify(payload, null, 2), "application/json");
-  showToast("Tum kayitlar JSON olarak indirildi.");
+  showToast("Tüm kayıtlar JSON olarak indirildi.");
 }
 
 function onSaveSettings(event) {
@@ -619,7 +622,7 @@ function onSaveSettings(event) {
 async function syncFromApi(options = {}) {
   const { silent = false } = options;
   if (!state.settings.apiBaseUrl) {
-    if (!silent) showToast("Once Apps Script URL bilgisini ayarlara girin.");
+    if (!silent) showToast("Önce Apps Script URL bilgisini ayarlara girin.");
     setView("settings");
     return;
   }
@@ -644,12 +647,12 @@ async function syncFromApi(options = {}) {
     setConnectionPill();
     renderAll();
     refreshWorkerProjectOptions();
-    if (!silent) showToast("Google Sheets verileri yuklendi.");
+    if (!silent) showToast("Google Sheets verileri yüklendi.");
   } catch (error) {
     console.error(error);
     state.apiHealth = "error";
     setConnectionPill();
-    if (!silent) showToast("Veri cekilirken hata olustu.");
+    if (!silent) showToast("Veri çekilirken hata oluştu.");
   }
 }
 
@@ -670,7 +673,7 @@ async function sendToApi(action, payload) {
     console.error(error);
     state.apiHealth = "error";
     setConnectionPill();
-    showToast("Sheets baglantisina yazilamadi, veri yerelde tutuldu.");
+    showToast("Sheets bağlantısına yazılamadı, veri yerelde tutuldu.");
     return false;
   }
 }
@@ -681,7 +684,7 @@ function refreshWorkerProjectOptions() {
     const current = select.value;
     select.innerHTML = state.projects.length
       ? state.projects.map((project) => `<option value="${project.id}">${escapeHtml(project.name)}</option>`).join("")
-      : '<option value="">Once proje ekleyin</option>';
+      : '<option value="">Önce proje ekleyin</option>';
     select.disabled = state.projects.length === 0;
     if (state.projects.some((project) => project.id === current)) select.value = current;
   });
@@ -721,7 +724,7 @@ function buildProjectSummaries() {
 }
 
 function projectDurationText(startDate, endDate) {
-  if (!startDate && !endDate) return "Tarih araligi girilmedi";
+  if (!startDate && !endDate) return "Tarih aralığı girilmedi";
   if (!startDate || !endDate) return `${startDate || "?"} - ${endDate || "?"}`;
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -737,11 +740,11 @@ function totalPresentCount() {
 }
 
 function userName(userId) {
-  return state.users.find((user) => user.id === userId)?.name || "Kullanici secilmedi";
+  return state.users.find((user) => user.id === userId)?.name || "Kullanıcı seçilmedi";
 }
 
 function projectName(projectId) {
-  return state.projects.find((project) => project.id === projectId)?.name || "Proje secilmedi";
+  return state.projects.find((project) => project.id === projectId)?.name || "Proje seçilmedi";
 }
 
 function kpiCard(label, value, note) {
@@ -756,7 +759,7 @@ function kpiCard(label, value, note) {
 
 function setConnectionPill() {
   if (!state.settings.apiBaseUrl) {
-    els.connectionPill.textContent = "Yerel Kayit";
+    els.connectionPill.textContent = "Yerel Kayıt";
     return;
   }
   if (state.apiHealth === "ok") {
@@ -764,7 +767,7 @@ function setConnectionPill() {
     return;
   }
   if (state.apiHealth === "error") {
-    els.connectionPill.textContent = "Sheets Hatasi";
+    els.connectionPill.textContent = "Sheets Hatası";
     return;
   }
   els.connectionPill.textContent = "Sheets Bagli";

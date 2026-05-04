@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#221f4f">
-  <title>Ayazlar Yapi | Santiye Operasyon Merkezi</title>
+  <title>Ayazlar Yapı | Şantiye Operasyon Merkezi</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -15,26 +15,26 @@
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark">
-          <img src="./assets/logo-ayazlar.jpg" alt="Ayazlar Yapi logosu">
+          <img src="./assets/logo-ayazlar.jpg" alt="Ayazlar Yapı logosu">
         </div>
         <div>
-          <div class="brand-name">Ayazlar Yapi</div>
-          <div class="brand-sub">Santiye Operasyon Merkezi</div>
+          <div class="brand-name">Ayazlar Yapı</div>
+          <div class="brand-sub">Şantiye Operasyon Merkezi</div>
         </div>
       </div>
 
       <nav class="nav">
         <button class="nav-item active" data-view="dashboard">Dashboard</button>
-        <button class="nav-item" data-view="report">Gunluk Saha Raporu</button>
+        <button class="nav-item" data-view="report">Günlük Saha Raporu</button>
         <button class="nav-item" data-view="puantaj">Puantaj</button>
-        <button class="nav-item" data-view="orders">Siparisler</button>
-        <button class="nav-item" data-view="projects">Santiyeler</button>
-        <button class="nav-item" data-view="records">Kayitlar</button>
+        <button class="nav-item" data-view="orders">Siparişler</button>
+        <button class="nav-item" data-view="projects">Şantiyeler</button>
+        <button class="nav-item" data-view="records">Kayıtlar</button>
         <button class="nav-item" data-view="settings">Ayarlar</button>
       </nav>
 
       <div class="sidebar-note">
-        <strong>Canli veri:</strong> Projeler, saha raporlari, puantajlar ve siparisler tek merkezden yonetilir.
+        <strong>Canlı veri:</strong> Projeler, saha raporları, puantajlar ve siparişler tek merkezden yönetilir.
       </div>
     </aside>
 
@@ -42,10 +42,11 @@
       <header class="topbar">
         <div>
           <h1 id="page-title">Dashboard</h1>
-          <p id="page-subtitle">Saha, puantaj ve proje verilerini tek ekranda yonetin.</p>
+          <p id="page-subtitle">Saha, puantaj ve proje verilerini tek ekranda yönetin.</p>
         </div>
         <div class="topbar-actions">
-          <span class="status-pill" id="connection-pill">Yerel Kayit</span>
+          <span class="status-pill" id="connection-pill">Yerel Kayıt</span>
+          <button class="btn btn-secondary" type="button" data-view-jump="projects">Proje Ekle</button>
           <button class="btn btn-primary" id="sync-btn">Verileri Yenile</button>
         </div>
       </header>
@@ -68,7 +69,7 @@
             <div class="panel-header">
               <div>
                 <div class="eyebrow">Son Hareketler</div>
-                <h2>Bugun Ozet</h2>
+                <h2>Bugün Özet</h2>
               </div>
             </div>
             <div class="timeline" id="today-feed"></div>
@@ -80,11 +81,15 @@
         <div class="panel">
           <div class="panel-header">
             <div>
-              <div class="eyebrow">Gunluk Giris</div>
+              <div class="eyebrow">Günlük Giriş</div>
               <h2>Saha Raporu</h2>
             </div>
           </div>
           <form id="report-form" class="panel-body form-grid">
+            <div class="info-card">
+              Proje eklemek için <strong>Şantiyeler</strong> sekmesine gidin. Eklediğiniz projeler burada otomatik seçilebilir olur.
+            </div>
+
             <div class="form-row cols-3">
               <label class="field">
                 <span>Proje</span>
@@ -95,30 +100,30 @@
                 <input type="date" name="date" id="report-date" required>
               </label>
               <label class="field">
-                <span>Calisma Saati</span>
+                <span>Çalışma Saati</span>
                 <input type="text" name="workingHours" placeholder="08:00 - 18:00">
               </label>
             </div>
 
             <div class="form-row cols-2">
               <label class="field">
-                <span>Bugun Yapilan Isler</span>
-                <textarea name="workSummary" rows="5" placeholder="Imalat, ekip, ilerleme bilgileri..."></textarea>
+                <span>Bugün Yapılan İşler</span>
+                <textarea name="workSummary" rows="5" placeholder="İmalat, ekip, ilerleme bilgileri..."></textarea>
               </label>
               <label class="field">
-                <span>Yarin Plani</span>
-                <textarea name="nextPlan" rows="5" placeholder="Yarinin hedefleri ve planlanan ekipler..."></textarea>
+                <span>Yarın Planı</span>
+                <textarea name="nextPlan" rows="5" placeholder="Yarının hedefleri ve planlanan ekipler..."></textarea>
               </label>
             </div>
 
             <div class="form-row cols-2">
               <label class="field">
                 <span>Ramak Kala</span>
-                <input type="text" name="incident" placeholder="Yok / Kisa aciklama">
+                <input type="text" name="incident" placeholder="Yok / Kısa açıklama">
               </label>
               <label class="field">
                 <span>Ek Notlar</span>
-                <textarea name="notes" rows="4" placeholder="Santiye, malzeme, is gucu veya idari notlar..."></textarea>
+                <textarea name="notes" rows="4" placeholder="Şantiye, malzeme, iş gücü veya idari notlar..."></textarea>
               </label>
             </div>
 
@@ -134,7 +139,7 @@
         <div class="panel">
           <div class="panel-header">
             <div>
-              <div class="eyebrow">Gunluk Giris</div>
+              <div class="eyebrow">Günlük Giriş</div>
               <h2>Puantaj</h2>
             </div>
             <button class="btn btn-secondary" id="add-worker-btn" type="button">Personel Ekle</button>
@@ -142,9 +147,13 @@
 
           <div class="panel-body">
             <form id="puantaj-meta-form" class="form-grid">
+              <div class="info-card">
+                Şefler ve projeler <strong>Şantiyeler</strong> sekmesinden tanımlanır. Buradaki seçimler o listelerden gelir.
+              </div>
+
               <div class="form-row cols-2">
                 <label class="field">
-                  <span>Sef</span>
+                  <span>Şef</span>
                   <select id="puantaj-chief"></select>
                 </label>
                 <label class="field">
@@ -157,8 +166,8 @@
             <div id="workers-list" class="workers-list"></div>
 
             <div class="form-actions">
-              <button class="btn btn-secondary" id="export-puantaj-btn" type="button">CSV Indir</button>
-              <button class="btn btn-primary" id="save-puantaj-btn" type="button">Puantaji Kaydet</button>
+              <button class="btn btn-secondary" id="export-puantaj-btn" type="button">CSV İndir</button>
+              <button class="btn btn-primary" id="save-puantaj-btn" type="button">Puantajı Kaydet</button>
             </div>
           </div>
         </div>
@@ -169,7 +178,7 @@
           <div class="panel-header">
             <div>
               <div class="eyebrow">Tedarik Takibi</div>
-              <h2>Siparisler</h2>
+              <h2>Siparişler</h2>
             </div>
           </div>
 
@@ -194,8 +203,8 @@
 
             <div class="form-row cols-3">
               <label class="field">
-                <span>Ozellik / Sinif</span>
-                <input type="text" id="order-spec" name="spec" placeholder="C30/37 veya Ø12 nervurlu">
+                <span>Özellik / Sınıf</span>
+                <input type="text" id="order-spec" name="spec" placeholder="C30/37 veya Ø12 nervürlü">
               </label>
               <label class="field">
                 <span>Miktar</span>
@@ -209,22 +218,22 @@
 
             <div class="form-row cols-3">
               <label class="field">
-                <span>Tedarikci</span>
-                <input type="text" id="order-supplier" name="supplier" placeholder="Akcansa, Icdas...">
+                <span>Tedarikçi</span>
+                <input type="text" id="order-supplier" name="supplier" placeholder="Akçansa, İçdaş...">
               </label>
               <label class="field">
                 <span>Birim Fiyat</span>
                 <input type="number" id="order-unit-price" name="unitPrice" step="0.01" placeholder="1850">
               </label>
               <label class="field">
-                <span>Birim Fiyat Nereden Alindi</span>
+                <span>Birim Fiyat Nereden Alındı</span>
                 <input type="text" id="order-price-source" name="priceSource" placeholder="Teklif, telefon, e-posta...">
               </label>
             </div>
 
             <div class="form-row cols-3">
               <label class="field">
-                <span>Siparisi Giren</span>
+                <span>Siparişi Giren</span>
                 <select id="order-by" name="orderedBy"></select>
               </label>
               <label class="field">
@@ -237,18 +246,18 @@
               </label>
               <label class="field">
                 <span>Toplam Tutar</span>
-                <input type="text" id="order-total" readonly placeholder="Otomatik hesaplanir">
+                <input type="text" id="order-total" readonly placeholder="Otomatik hesaplanır">
               </label>
             </div>
 
             <label class="field">
               <span>Ek Not</span>
-              <textarea id="order-note" name="note" rows="3" placeholder="Siparis notlari, sevk bilgisi, fiyat detayi..."></textarea>
+              <textarea id="order-note" name="note" rows="3" placeholder="Sipariş notları, sevk bilgisi, fiyat detayı..."></textarea>
             </label>
 
             <div class="form-actions">
               <button type="reset" class="btn btn-secondary">Temizle</button>
-              <button type="submit" class="btn btn-primary">Siparisi Kaydet</button>
+              <button type="submit" class="btn btn-primary">Siparişi Kaydet</button>
             </div>
           </form>
         </div>
@@ -256,8 +265,8 @@
         <div class="panel" style="margin-top: 16px;">
           <div class="panel-header">
             <div>
-              <div class="eyebrow">Kayitlar</div>
-              <h2>Siparis Gecmisi</h2>
+              <div class="eyebrow">Kayıtlar</div>
+              <h2>Sipariş Geçmişi</h2>
             </div>
           </div>
           <div class="panel-body">
@@ -271,32 +280,32 @@
           <div class="panel">
             <div class="panel-header">
               <div>
-                <div class="eyebrow">Yonetim</div>
+                <div class="eyebrow">Yönetim</div>
                 <h2>Yeni Proje Ekle</h2>
               </div>
             </div>
             <form id="project-form" class="panel-body form-grid">
               <div class="form-row cols-2">
                 <label class="field">
-                  <span>Proje Adi</span>
-                  <input type="text" id="project-name" name="name" placeholder="Yeni santiye adi">
+                  <span>Proje Adı</span>
+                  <input type="text" id="project-name" name="name" placeholder="Yeni şantiye adı">
                 </label>
                 <label class="field">
                   <span>Konum</span>
-                  <input type="text" id="project-location" name="location" placeholder="Il / Ilce">
+                  <input type="text" id="project-location" name="location" placeholder="İl / İlçe">
                 </label>
               </div>
               <div class="form-row cols-3">
                 <label class="field">
-                  <span>Baslangic Tarihi</span>
+                  <span>Başlangıç Tarihi</span>
                   <input type="date" id="project-start" name="startDate">
                 </label>
                 <label class="field">
-                  <span>Hedef Bitis</span>
+                  <span>Hedef Bitiş</span>
                   <input type="date" id="project-end" name="endDate">
                 </label>
                 <label class="field">
-                  <span>Butce</span>
+                  <span>Bütçe</span>
                   <input type="number" id="project-budget" name="budget" step="0.01" placeholder="0">
                 </label>
               </div>
@@ -309,23 +318,23 @@
           <div class="panel">
             <div class="panel-header">
               <div>
-                <div class="eyebrow">Yonetim</div>
-                <h2>Kullanici / Sef Ekle</h2>
+                <div class="eyebrow">Yönetim</div>
+                <h2>Kullanıcı / Şef Ekle</h2>
               </div>
             </div>
             <form id="user-form" class="panel-body form-grid">
               <div class="form-row cols-2">
                 <label class="field">
                   <span>Ad Soyad</span>
-                  <input type="text" id="user-name" name="name" placeholder="Kullanici adi">
+                  <input type="text" id="user-name" name="name" placeholder="Kullanıcı adı">
                 </label>
                 <label class="field">
                   <span>Rol</span>
-                  <input type="text" id="user-role" name="role" placeholder="Admin, Sef, Satin Alma...">
+                  <input type="text" id="user-role" name="role" placeholder="Admin, Şef, Satın Alma...">
                 </label>
               </div>
               <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Kullaniciyi Kaydet</button>
+                <button type="submit" class="btn btn-primary">Kullanıcıyı Kaydet</button>
               </div>
             </form>
             <div class="panel-body" style="padding-top: 0;">
@@ -337,8 +346,8 @@
         <div class="panel" style="margin-top: 16px;">
           <div class="panel-header">
             <div>
-              <div class="eyebrow">Toplu Ozet</div>
-              <h2>Santiyeler</h2>
+              <div class="eyebrow">Toplu Özet</div>
+              <h2>Şantiyeler</h2>
             </div>
           </div>
           <div class="panel-body">
@@ -352,22 +361,22 @@
           <div class="panel-header">
             <div>
               <div class="eyebrow">Veri Merkezi</div>
-              <h2>Kayitlar</h2>
+              <h2>Kayıtlar</h2>
             </div>
             <div class="header-actions">
-              <button class="btn btn-secondary" id="export-records-btn" type="button">Tum Kayitlari JSON Indir</button>
+              <button class="btn btn-secondary" id="export-records-btn" type="button">Tüm Kayıtları JSON İndir</button>
             </div>
           </div>
 
           <div class="panel-body">
             <div class="form-row cols-3 compact-row">
               <label class="field">
-                <span>Kayit Turu</span>
+                <span>Kayıt Türü</span>
                 <select id="record-type-filter">
-                  <option value="all">Tum Kayitlar</option>
-                  <option value="report">Saha Raporlari</option>
+                  <option value="all">Tüm Kayıtlar</option>
+                  <option value="report">Saha Raporları</option>
                   <option value="puantaj">Puantajlar</option>
-                  <option value="order">Siparisler</option>
+                  <option value="order">Siparişler</option>
                 </select>
               </label>
               <label class="field">
@@ -376,21 +385,21 @@
               </label>
               <label class="field">
                 <span>Arama</span>
-                <input type="text" id="record-search" placeholder="Proje, sef veya not ara">
+                <input type="text" id="record-search" placeholder="Proje, şef veya not ara">
               </label>
             </div>
 
             <div class="records-grid">
               <section>
-                <h3 class="section-title">Saha Raporlari</h3>
+                <h3 class="section-title">Saha Raporları</h3>
                 <div class="records-list" id="report-records"></div>
               </section>
               <section>
-                <h3 class="section-title">Puantaj Kayitlari</h3>
+                <h3 class="section-title">Puantaj Kayıtları</h3>
                 <div class="records-list" id="puantaj-records"></div>
               </section>
               <section>
-                <h3 class="section-title">Siparis Kayitlari</h3>
+                <h3 class="section-title">Sipariş Kayıtları</h3>
                 <div class="records-list" id="records-order-list"></div>
               </section>
             </div>
@@ -402,8 +411,8 @@
         <div class="panel">
           <div class="panel-header">
             <div>
-              <div class="eyebrow">Altyapi</div>
-              <h2>Github Pages + Google Sheets Ayarlari</h2>
+              <div class="eyebrow">Altyapı</div>
+              <h2>GitHub Pages + Google Sheets Ayarları</h2>
             </div>
           </div>
 
@@ -414,27 +423,27 @@
             </label>
 
             <label class="field">
-              <span>Sirket / Yapi Adi</span>
-              <input type="text" name="companyName" id="settings-company-name" placeholder="Ayazlar Yapi">
+              <span>Şirket / Yapı Adı</span>
+              <input type="text" name="companyName" id="settings-company-name" placeholder="Ayazlar Yapı">
             </label>
 
             <label class="field">
               <span>Drive / Sheet Notu</span>
-              <textarea name="sheetNote" id="settings-sheet-note" rows="4" placeholder="Bagli sheet linki, tablo isimleri veya kurulum notlari..."></textarea>
+              <textarea name="sheetNote" id="settings-sheet-note" rows="4" placeholder="Bağlı sheet linki, tablo isimleri veya kurulum notları..."></textarea>
             </label>
 
             <div class="info-card">
-              <strong>Beklenen endpoint sozlesmesi</strong>
+              <strong>Beklenen endpoint sözleşmesi</strong>
               <ul>
-                <li><code>GET ?resource=bootstrap</code> -> projeler, kullanicilar, puantajlar, raporlar, siparisler</li>
-                <li><code>POST action=saveReport</code> -> yeni saha raporu kaydi</li>
-                <li><code>POST action=savePuantaj</code> -> yeni puantaj kaydi</li>
-                <li><code>POST action=saveOrder</code> -> yeni siparis kaydi</li>
+                <li><code>GET ?resource=bootstrap</code> -> projeler, kullanıcılar, puantajlar, raporlar, siparişler</li>
+                <li><code>POST action=saveReport</code> -> yeni saha raporu kaydı</li>
+                <li><code>POST action=savePuantaj</code> -> yeni puantaj kaydı</li>
+                <li><code>POST action=saveOrder</code> -> yeni sipariş kaydı</li>
               </ul>
             </div>
 
             <div class="form-actions">
-              <button type="submit" class="btn btn-primary">Ayarlari Kaydet</button>
+              <button type="submit" class="btn btn-primary">Ayarları Kaydet</button>
             </div>
           </form>
         </div>
@@ -445,7 +454,7 @@
   <template id="worker-template">
     <article class="worker-card">
       <div class="worker-header">
-        <input type="text" class="worker-name" placeholder="Isim Soyisim">
+        <input type="text" class="worker-name" placeholder="İsim Soyisim">
         <button type="button" class="icon-btn worker-delete" aria-label="Personeli sil">Sil</button>
       </div>
       <div class="worker-status">
@@ -458,8 +467,8 @@
           <select class="worker-project"></select>
         </label>
         <label class="field">
-          <span>Gorev</span>
-          <input type="text" class="worker-job" placeholder="Demirci, kalipci...">
+          <span>Görev</span>
+          <input type="text" class="worker-job" placeholder="Demirci, kalıpçı...">
         </label>
       </div>
     </article>
