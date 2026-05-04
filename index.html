@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f59e0b">
+  <title>Ayazlar Yapi | Santiye Operasyon Merkezi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/styles/main.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">AY</div>
+        <div>
+          <div class="brand-name">Santiye Operasyon Merkezi</div>
+          <div class="brand-sub">Github Pages + Google Sheets</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active" data-view="dashboard">Dashboard</button>
+        <button class="nav-item" data-view="report">Gunluk Saha Raporu</button>
+        <button class="nav-item" data-view="puantaj">Puantaj</button>
+        <button class="nav-item" data-view="records">Kayitlar</button>
+        <button class="nav-item" data-view="settings">Ayarlar</button>
+      </nav>
+
+      <div class="sidebar-note">
+        <strong>Canli veri:</strong> Google Sheets baglantisi eklenene kadar uygulama yerel demo modunda calisir.
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="page-title">Dashboard</h1>
+          <p id="page-subtitle">Saha, puantaj ve proje verilerini tek ekranda yonetin.</p>
+        </div>
+        <div class="topbar-actions">
+          <span class="status-pill" id="connection-pill">Demo Modu</span>
+          <button class="btn btn-secondary" id="seed-demo-btn">Demo Veri Yukle</button>
+          <button class="btn btn-primary" id="sync-btn">Verileri Yenile</button>
+        </div>
+      </header>
+
+      <section class="view active" id="view-dashboard">
+        <div class="kpi-grid" id="kpi-grid"></div>
+
+        <div class="panel-grid two-up">
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="eyebrow">Aktif Projeler</div>
+                <h2>Proje Durumu</h2>
+              </div>
+            </div>
+            <div class="project-list" id="project-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="eyebrow">Son Hareketler</div>
+                <h2>Bugun Ozet</h2>
+              </div>
+            </div>
+            <div class="timeline" id="today-feed"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-report">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="eyebrow">Gunluk Giris</div>
+              <h2>Saha Raporu</h2>
+            </div>
+          </div>
+          <form id="report-form" class="panel-body form-grid">
+            <div class="form-row cols-3">
+              <label class="field">
+                <span>Proje</span>
+                <select name="projectId" id="report-project"></select>
+              </label>
+              <label class="field">
+                <span>Tarih</span>
+                <input type="date" name="date" id="report-date" required>
+              </label>
+              <label class="field">
+                <span>Vardiya</span>
+                <select name="shift">
+                  <option>Gunduz</option>
+                  <option>Gece</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="form-row cols-3">
+              <label class="field">
+                <span>Hava Durumu</span>
+                <select name="weather">
+                  <option>Acik / Gunesli</option>
+                  <option>Bulutlu</option>
+                  <option>Yagmurlu</option>
+                  <option>Ruzgarli</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Sicaklik</span>
+                <input type="number" name="temperature" placeholder="18">
+              </label>
+              <label class="field">
+                <span>Calisma Saati</span>
+                <input type="text" name="workingHours" placeholder="08:00 - 18:00">
+              </label>
+            </div>
+
+            <div class="form-row cols-2">
+              <label class="field">
+                <span>Bugun Yapilan Isler</span>
+                <textarea name="workSummary" rows="5" placeholder="Imalat, ekip, ilerleme bilgileri..."></textarea>
+              </label>
+              <label class="field">
+                <span>Yarin Plani</span>
+                <textarea name="nextPlan" rows="5" placeholder="Yarinin hedefleri ve planlanan ekipler..."></textarea>
+              </label>
+            </div>
+
+            <div class="form-row cols-3">
+              <label class="field">
+                <span>ISG / KKD</span>
+                <select name="safetyPpe">
+                  <option>Evet</option>
+                  <option>Kismen</option>
+                  <option>Hayir</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>ToolBox Konusmasi</span>
+                <select name="toolboxTalk">
+                  <option>Evet</option>
+                  <option>Hayir</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Olay / Ramak Kala</span>
+                <input type="text" name="incident" placeholder="Yok / Kisa aciklama">
+              </label>
+            </div>
+
+            <label class="field">
+              <span>Ek Notlar</span>
+              <textarea name="notes" rows="4" placeholder="Santiye, malzeme, is gucu veya idari notlar..."></textarea>
+            </label>
+
+            <div class="form-actions">
+              <button type="reset" class="btn btn-secondary">Temizle</button>
+              <button type="submit" class="btn btn-primary">Raporu Kaydet</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="view" id="view-puantaj">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="eyebrow">Gunluk Giris</div>
+              <h2>Puantaj</h2>
+            </div>
+            <button class="btn btn-secondary" id="add-worker-btn" type="button">Personel Ekle</button>
+          </div>
+
+          <div class="panel-body">
+            <form id="puantaj-meta-form" class="form-grid">
+              <div class="form-row cols-3">
+                <label class="field">
+                  <span>Sef</span>
+                  <input type="text" id="puantaj-chief" placeholder="Santiye sefi">
+                </label>
+                <label class="field">
+                  <span>Tarih</span>
+                  <input type="date" id="puantaj-date">
+                </label>
+                <label class="field">
+                  <span>Varsayilan Proje</span>
+                  <select id="puantaj-project"></select>
+                </label>
+              </div>
+            </form>
+
+            <div id="workers-list" class="workers-list"></div>
+
+            <div class="form-actions">
+              <button class="btn btn-secondary" id="export-puantaj-btn" type="button">CSV Indir</button>
+              <button class="btn btn-primary" id="save-puantaj-btn" type="button">Puantaji Kaydet</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-records">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="eyebrow">Veri Merkezi</div>
+              <h2>Kayitlar</h2>
+            </div>
+            <div class="header-actions">
+              <button class="btn btn-secondary" id="export-records-btn" type="button">Tum Kayitlari JSON Indir</button>
+            </div>
+          </div>
+
+          <div class="panel-body">
+            <div class="form-row cols-3 compact-row">
+              <label class="field">
+                <span>Kayit Turu</span>
+                <select id="record-type-filter">
+                  <option value="all">Tum Kayitlar</option>
+                  <option value="report">Saha Raporlari</option>
+                  <option value="puantaj">Puantajlar</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Proje</span>
+                <select id="record-project-filter"></select>
+              </label>
+              <label class="field">
+                <span>Arama</span>
+                <input type="text" id="record-search" placeholder="Proje, sef veya not ara">
+              </label>
+            </div>
+
+            <div class="records-grid">
+              <section>
+                <h3 class="section-title">Saha Raporlari</h3>
+                <div class="records-list" id="report-records"></div>
+              </section>
+              <section>
+                <h3 class="section-title">Puantaj Kayitlari</h3>
+                <div class="records-list" id="puantaj-records"></div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-settings">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="eyebrow">Altyapi</div>
+              <h2>Github Pages + Google Sheets Ayarlari</h2>
+            </div>
+          </div>
+
+          <form id="settings-form" class="panel-body form-grid">
+            <label class="field">
+              <span>Google Apps Script Web App URL</span>
+              <input type="url" name="apiBaseUrl" id="settings-api-url" placeholder="https://script.google.com/macros/s/.../exec">
+            </label>
+
+            <label class="field">
+              <span>Sirket / Yapi Adi</span>
+              <input type="text" name="companyName" id="settings-company-name" placeholder="Ayazlar Yapi">
+            </label>
+
+            <label class="field">
+              <span>Drive / Sheet Notu</span>
+              <textarea name="sheetNote" id="settings-sheet-note" rows="4" placeholder="Bagli sheet linki, tablo isimleri veya kurulum notlari..."></textarea>
+            </label>
+
+            <div class="info-card">
+              <strong>Beklenen endpoint sozlesmesi</strong>
+              <ul>
+                <li><code>GET ?resource=bootstrap</code> -> projeler, puantajlar, raporlar</li>
+                <li><code>POST action=saveReport</code> -> yeni saha raporu kaydi</li>
+                <li><code>POST action=savePuantaj</code> -> yeni puantaj kaydi</li>
+              </ul>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Ayarlari Kaydet</button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <template id="worker-template">
+    <article class="worker-card">
+      <div class="worker-header">
+        <input type="text" class="worker-name" placeholder="Isim Soyisim">
+        <button type="button" class="icon-btn worker-delete" aria-label="Personeli sil">Sil</button>
+      </div>
+      <div class="worker-status">
+        <button type="button" class="status-btn active" data-status="present">Geldi</button>
+        <button type="button" class="status-btn" data-status="absent">Gelmedi</button>
+      </div>
+      <div class="form-row cols-2 worker-fields">
+        <label class="field">
+          <span>Proje</span>
+          <select class="worker-project"></select>
+        </label>
+        <label class="field">
+          <span>Gorev</span>
+          <input type="text" class="worker-job" placeholder="Demirci, kalipci...">
+        </label>
+      </div>
+    </article>
+  </template>
+
+  <div class="toast" id="toast"></div>
+  <script src="./assets/scripts/app.js" type="module"></script>
+</body>
+</html>
