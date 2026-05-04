@@ -27,12 +27,14 @@
         <button class="nav-item active" data-view="dashboard">Dashboard</button>
         <button class="nav-item" data-view="report">Gunluk Saha Raporu</button>
         <button class="nav-item" data-view="puantaj">Puantaj</button>
+        <button class="nav-item" data-view="orders">Siparisler</button>
+        <button class="nav-item" data-view="projects">Santiyeler</button>
         <button class="nav-item" data-view="records">Kayitlar</button>
         <button class="nav-item" data-view="settings">Ayarlar</button>
       </nav>
 
       <div class="sidebar-note">
-        <strong>Canli veri:</strong> Google Sheets baglantisi eklenene kadar uygulama yerel demo modunda calisir.
+        <strong>Canli veri:</strong> Projeler, saha raporlari, puantajlar ve siparisler tek merkezden yonetilir.
       </div>
     </aside>
 
@@ -43,8 +45,7 @@
           <p id="page-subtitle">Saha, puantaj ve proje verilerini tek ekranda yonetin.</p>
         </div>
         <div class="topbar-actions">
-          <span class="status-pill" id="connection-pill">Demo Modu</span>
-          <button class="btn btn-secondary" id="seed-demo-btn">Demo Veri Yukle</button>
+          <span class="status-pill" id="connection-pill">Yerel Kayit</span>
           <button class="btn btn-primary" id="sync-btn">Verileri Yenile</button>
         </div>
       </header>
@@ -94,29 +95,6 @@
                 <input type="date" name="date" id="report-date" required>
               </label>
               <label class="field">
-                <span>Vardiya</span>
-                <select name="shift">
-                  <option>Gunduz</option>
-                  <option>Gece</option>
-                </select>
-              </label>
-            </div>
-
-            <div class="form-row cols-3">
-              <label class="field">
-                <span>Hava Durumu</span>
-                <select name="weather">
-                  <option>Acik / Gunesli</option>
-                  <option>Bulutlu</option>
-                  <option>Yagmurlu</option>
-                  <option>Ruzgarli</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>Sicaklik</span>
-                <input type="number" name="temperature" placeholder="18">
-              </label>
-              <label class="field">
                 <span>Calisma Saati</span>
                 <input type="text" name="workingHours" placeholder="08:00 - 18:00">
               </label>
@@ -133,32 +111,16 @@
               </label>
             </div>
 
-            <div class="form-row cols-3">
+            <div class="form-row cols-2">
               <label class="field">
-                <span>ISG / KKD</span>
-                <select name="safetyPpe">
-                  <option>Evet</option>
-                  <option>Kismen</option>
-                  <option>Hayir</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>ToolBox Konusmasi</span>
-                <select name="toolboxTalk">
-                  <option>Evet</option>
-                  <option>Hayir</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>Olay / Ramak Kala</span>
+                <span>Ramak Kala</span>
                 <input type="text" name="incident" placeholder="Yok / Kisa aciklama">
               </label>
+              <label class="field">
+                <span>Ek Notlar</span>
+                <textarea name="notes" rows="4" placeholder="Santiye, malzeme, is gucu veya idari notlar..."></textarea>
+              </label>
             </div>
-
-            <label class="field">
-              <span>Ek Notlar</span>
-              <textarea name="notes" rows="4" placeholder="Santiye, malzeme, is gucu veya idari notlar..."></textarea>
-            </label>
 
             <div class="form-actions">
               <button type="reset" class="btn btn-secondary">Temizle</button>
@@ -180,18 +142,14 @@
 
           <div class="panel-body">
             <form id="puantaj-meta-form" class="form-grid">
-              <div class="form-row cols-3">
+              <div class="form-row cols-2">
                 <label class="field">
                   <span>Sef</span>
-                  <input type="text" id="puantaj-chief" placeholder="Santiye sefi">
+                  <select id="puantaj-chief"></select>
                 </label>
                 <label class="field">
                   <span>Tarih</span>
                   <input type="date" id="puantaj-date">
-                </label>
-                <label class="field">
-                  <span>Varsayilan Proje</span>
-                  <select id="puantaj-project"></select>
                 </label>
               </div>
             </form>
@@ -202,6 +160,189 @@
               <button class="btn btn-secondary" id="export-puantaj-btn" type="button">CSV Indir</button>
               <button class="btn btn-primary" id="save-puantaj-btn" type="button">Puantaji Kaydet</button>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-orders">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="eyebrow">Tedarik Takibi</div>
+              <h2>Siparisler</h2>
+            </div>
+          </div>
+
+          <form id="order-form" class="panel-body form-grid">
+            <div class="form-row cols-3">
+              <label class="field">
+                <span>Proje</span>
+                <select id="order-project" name="projectId"></select>
+              </label>
+              <label class="field">
+                <span>Tarih</span>
+                <input type="date" id="order-date" name="date">
+              </label>
+              <label class="field">
+                <span>Malzeme</span>
+                <select id="order-material" name="material">
+                  <option value="Beton">Beton</option>
+                  <option value="Demir">Demir</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="form-row cols-3">
+              <label class="field">
+                <span>Ozellik / Sinif</span>
+                <input type="text" id="order-spec" name="spec" placeholder="C30/37 veya Ø12 nervurlu">
+              </label>
+              <label class="field">
+                <span>Miktar</span>
+                <input type="number" id="order-qty" name="quantity" step="0.01" placeholder="120">
+              </label>
+              <label class="field">
+                <span>Birim</span>
+                <input type="text" id="order-unit" name="unit" placeholder="m³ / ton">
+              </label>
+            </div>
+
+            <div class="form-row cols-3">
+              <label class="field">
+                <span>Tedarikci</span>
+                <input type="text" id="order-supplier" name="supplier" placeholder="Akcansa, Icdas...">
+              </label>
+              <label class="field">
+                <span>Birim Fiyat</span>
+                <input type="number" id="order-unit-price" name="unitPrice" step="0.01" placeholder="1850">
+              </label>
+              <label class="field">
+                <span>Birim Fiyat Nereden Alindi</span>
+                <input type="text" id="order-price-source" name="priceSource" placeholder="Teklif, telefon, e-posta...">
+              </label>
+            </div>
+
+            <div class="form-row cols-3">
+              <label class="field">
+                <span>Siparisi Giren</span>
+                <select id="order-by" name="orderedBy"></select>
+              </label>
+              <label class="field">
+                <span>Durum</span>
+                <select id="order-status" name="status">
+                  <option value="Beklemede">Beklemede</option>
+                  <option value="Yolda">Yolda</option>
+                  <option value="Teslim">Teslim</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Toplam Tutar</span>
+                <input type="text" id="order-total" readonly placeholder="Otomatik hesaplanir">
+              </label>
+            </div>
+
+            <label class="field">
+              <span>Ek Not</span>
+              <textarea id="order-note" name="note" rows="3" placeholder="Siparis notlari, sevk bilgisi, fiyat detayi..."></textarea>
+            </label>
+
+            <div class="form-actions">
+              <button type="reset" class="btn btn-secondary">Temizle</button>
+              <button type="submit" class="btn btn-primary">Siparisi Kaydet</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel" style="margin-top: 16px;">
+          <div class="panel-header">
+            <div>
+              <div class="eyebrow">Kayitlar</div>
+              <h2>Siparis Gecmisi</h2>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="records-list" id="order-records"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-projects">
+        <div class="panel-grid two-up">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="eyebrow">Yonetim</div>
+                <h2>Yeni Proje Ekle</h2>
+              </div>
+            </div>
+            <form id="project-form" class="panel-body form-grid">
+              <div class="form-row cols-2">
+                <label class="field">
+                  <span>Proje Adi</span>
+                  <input type="text" id="project-name" name="name" placeholder="Yeni santiye adi">
+                </label>
+                <label class="field">
+                  <span>Konum</span>
+                  <input type="text" id="project-location" name="location" placeholder="Il / Ilce">
+                </label>
+              </div>
+              <div class="form-row cols-3">
+                <label class="field">
+                  <span>Baslangic Tarihi</span>
+                  <input type="date" id="project-start" name="startDate">
+                </label>
+                <label class="field">
+                  <span>Hedef Bitis</span>
+                  <input type="date" id="project-end" name="endDate">
+                </label>
+                <label class="field">
+                  <span>Butce</span>
+                  <input type="number" id="project-budget" name="budget" step="0.01" placeholder="0">
+                </label>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Projeyi Kaydet</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="eyebrow">Yonetim</div>
+                <h2>Kullanici / Sef Ekle</h2>
+              </div>
+            </div>
+            <form id="user-form" class="panel-body form-grid">
+              <div class="form-row cols-2">
+                <label class="field">
+                  <span>Ad Soyad</span>
+                  <input type="text" id="user-name" name="name" placeholder="Kullanici adi">
+                </label>
+                <label class="field">
+                  <span>Rol</span>
+                  <input type="text" id="user-role" name="role" placeholder="Admin, Sef, Satin Alma...">
+                </label>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Kullaniciyi Kaydet</button>
+              </div>
+            </form>
+            <div class="panel-body" style="padding-top: 0;">
+              <div class="records-list" id="user-records"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top: 16px;">
+          <div class="panel-header">
+            <div>
+              <div class="eyebrow">Toplu Ozet</div>
+              <h2>Santiyeler</h2>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="project-list" id="site-summary-list"></div>
           </div>
         </div>
       </section>
@@ -226,6 +367,7 @@
                   <option value="all">Tum Kayitlar</option>
                   <option value="report">Saha Raporlari</option>
                   <option value="puantaj">Puantajlar</option>
+                  <option value="order">Siparisler</option>
                 </select>
               </label>
               <label class="field">
@@ -246,6 +388,10 @@
               <section>
                 <h3 class="section-title">Puantaj Kayitlari</h3>
                 <div class="records-list" id="puantaj-records"></div>
+              </section>
+              <section>
+                <h3 class="section-title">Siparis Kayitlari</h3>
+                <div class="records-list" id="records-order-list"></div>
               </section>
             </div>
           </div>
@@ -280,9 +426,10 @@
             <div class="info-card">
               <strong>Beklenen endpoint sozlesmesi</strong>
               <ul>
-                <li><code>GET ?resource=bootstrap</code> -> projeler, puantajlar, raporlar</li>
+                <li><code>GET ?resource=bootstrap</code> -> projeler, kullanicilar, puantajlar, raporlar, siparisler</li>
                 <li><code>POST action=saveReport</code> -> yeni saha raporu kaydi</li>
                 <li><code>POST action=savePuantaj</code> -> yeni puantaj kaydi</li>
+                <li><code>POST action=saveOrder</code> -> yeni siparis kaydi</li>
               </ul>
             </div>
 
