@@ -202,8 +202,7 @@ async function onLoginSubmit(event) {
 
   const username = els.loginUsername.value.trim();
   const password = els.loginPassword.value;
-  const passwordHash = await sha256(password);
-  const user = state.users.find((item) => item.username === username && item.passwordHash === passwordHash && item.active !== false);
+  const user = await findMatchingUser(username, password);
 
   if (!user) {
     showLoginError("Kullanıcı adı veya şifre hatalı.");
@@ -271,9 +270,18 @@ function normalizeUser(user) {
     name: user.name || user.ad || user.username,
     username: user.username || user.name,
     role: user.role || "kullanici",
-    passwordHash: user.passwordHash,
+    passwordHash: String(user.passwordHash ?? ""),
     active: user.active !== false
   };
+}
+
+async function findMatchingUser(username, password) {
+  const hashed = await sha256(password);
+  return state.users.find((item) => {
+    if (item.username !== username || item.active === false) return false;
+    const stored = String(item.passwordHash ?? "");
+    return stored === hashed || stored === password;
+  }) || null;
 }
 
 function setView(viewName) {
