@@ -14,7 +14,7 @@ const DEFAULT_PROJECTS = [
 const DEFAULT_SETTINGS = {
   apiBaseUrl: "",
   companyName: "Ayazlar Yapi",
-  sheetNote: ""
+  sheetNote: "Ana Google Sheet: https://docs.google.com/spreadsheets/d/17WZGVKxZ2cfSxEGkLPRQazHNFU4iYBAqMDYy99ZfErM/edit?usp=sharing"
 };
 
 const state = {

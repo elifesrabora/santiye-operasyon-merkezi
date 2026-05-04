@@ -16,6 +16,8 @@ Github Pages uzerinde yayinlanmak ve Google Sheets ile beslenmek uzere hazirlana
 - `index.html`: uygulamanin ana kabugu
 - `assets/styles/main.css`: tek tema ve responsive arayuz
 - `assets/scripts/app.js`: ekran mantigi, local demo veri ve API entegrasyon noktasi
+- `google-apps-script.gs`: Google Sheets yazma/okuma katmani icin Apps Script sablonu
+- `GOOGLE_SHEETS_SETUP.md`: Sheet sekmeleri, kolonlar ve deployment adimlari
 
 ## Github Pages Yayini
 
@@ -76,6 +78,7 @@ Uygulama dogrudan `.xlsx` dosyasina yazmak yerine `Google Sheets + Apps Script W
 ## Sonraki Adimlar
 
 1. Arkadasinizin GitHub reposunu baglayalim.
-2. Google Sheet kolon yapisini olusturalim.
-3. Apps Script Web App dosyasini yazip bu arayuza baglayalim.
-4. Github Pages uzerinden canli test yapalim.
+2. [GOOGLE_SHEETS_SETUP.md](/Users/mirkanemirsancak/Documents/New%20project%203/GOOGLE_SHEETS_SETUP.md) dosyasindaki sekme ve kolon yapisini olusturalim.
+3. [google-apps-script.gs](/Users/mirkanemirsancak/Documents/New%20project%203/google-apps-script.gs) dosyasini Apps Script'e deploy edelim.
+4. Cikan Web App URL degerini uygulamanin `Ayarlar` ekranina girelim.
+5. Github Pages uzerinden canli test yapalim.
