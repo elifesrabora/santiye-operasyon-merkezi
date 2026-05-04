@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./assets/styles/main.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
   <div id="login-screen" class="login-screen">
@@ -131,6 +133,9 @@
               <div class="eyebrow">Günlük Giriş</div>
               <h2>Saha Raporu</h2>
             </div>
+            <div class="header-actions">
+              <button class="btn btn-secondary" type="button" id="report-pdf-btn">Saha Raporu PDF</button>
+            </div>
           </div>
           <form id="report-form" class="panel-body form-grid">
             <div class="info-card">
@@ -189,7 +194,10 @@
               <div class="eyebrow">Günlük Giriş</div>
               <h2>Puantaj</h2>
             </div>
-            <button class="btn btn-secondary" id="add-worker-btn" type="button">Personel Ekle</button>
+            <div class="header-actions">
+              <button class="btn btn-secondary" id="puantaj-pdf-btn" type="button">Puantaj PDF</button>
+              <button class="btn btn-secondary" id="add-worker-btn" type="button">Personel Ekle</button>
+            </div>
           </div>
 
           <div class="panel-body">
@@ -226,6 +234,9 @@
             <div>
               <div class="eyebrow">Tedarik Takibi</div>
               <h2>Siparişler</h2>
+            </div>
+            <div class="header-actions">
+              <button class="btn btn-secondary" type="button" id="orders-pdf-btn">Sipariş PDF</button>
             </div>
           </div>
 
@@ -414,6 +425,78 @@
           </div>
           <div class="panel-body">
             <div class="project-list" id="site-summary-list"></div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top: 16px;">
+          <div class="panel-header">
+            <div>
+              <div class="eyebrow">Proje Detayı</div>
+              <h2 id="project-detail-title">Bir şantiye seçin</h2>
+            </div>
+            <div class="header-actions">
+              <button class="btn btn-secondary" type="button" id="project-detail-pdf-btn">Detay PDF</button>
+            </div>
+          </div>
+          <div class="panel-body form-grid">
+            <div class="form-row cols-3">
+              <label class="field">
+                <span>Başlangıç Tarihi</span>
+                <input type="date" id="project-filter-from">
+              </label>
+              <label class="field">
+                <span>Bitiş Tarihi</span>
+                <input type="date" id="project-filter-to">
+              </label>
+              <div class="field">
+                <span>Filtre</span>
+                <div class="form-actions">
+                  <button class="btn btn-secondary" type="button" id="project-filter-btn">Uygula</button>
+                </div>
+              </div>
+            </div>
+            <div class="kpi-grid" id="project-detail-kpis"></div>
+            <div class="info-card" id="project-detail-brief">
+              Seçilen proje için özet bilgi burada görünür.
+            </div>
+            <div class="panel-grid two-up">
+              <div class="panel chart-panel">
+                <div class="panel-header">
+                  <div>
+                    <div class="eyebrow">İnfografik</div>
+                    <h2>Maliyet Dağılımı</h2>
+                  </div>
+                </div>
+                <div class="panel-body">
+                  <div class="mini-chart" id="project-cost-chart"></div>
+                </div>
+              </div>
+              <div class="panel chart-panel">
+                <div class="panel-header">
+                  <div>
+                    <div class="eyebrow">İnfografik</div>
+                    <h2>Kayıt Yoğunluğu</h2>
+                  </div>
+                </div>
+                <div class="panel-body">
+                  <div class="mini-chart" id="project-activity-chart"></div>
+                </div>
+              </div>
+            </div>
+            <div class="panel-grid two-up">
+              <section>
+                <h3 class="section-title">Raporlar</h3>
+                <div class="records-list" id="project-detail-reports"></div>
+              </section>
+              <section>
+                <h3 class="section-title">Siparişler</h3>
+                <div class="records-list" id="project-detail-orders"></div>
+              </section>
+            </div>
+            <section>
+              <h3 class="section-title">Puantaj</h3>
+              <div class="records-list" id="project-detail-puantaj"></div>
+            </section>
           </div>
         </div>
       </section>

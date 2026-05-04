@@ -339,6 +339,10 @@ button, input, select, textarea {
   background: linear-gradient(180deg, rgba(26, 34, 61, 0.88), rgba(18, 24, 43, 0.88));
 }
 
+.project-item {
+  cursor: pointer;
+}
+
 .project-meta,
 .record-meta,
 .timeline-item p {
@@ -506,6 +510,13 @@ textarea {
   margin-bottom: 8px;
 }
 
+.record-footer {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .tag {
   padding: 6px 10px;
   border-radius: 999px;
@@ -523,6 +534,42 @@ textarea {
 .info-card ul {
   margin: 10px 0 0 18px;
   padding: 0;
+}
+
+.chart-panel .panel-body {
+  min-height: 180px;
+}
+
+.mini-chart {
+  display: grid;
+  gap: 12px;
+}
+
+.chart-row {
+  display: grid;
+  gap: 6px;
+}
+
+.chart-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.chart-bar {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.chart-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-3), var(--accent-2));
 }
 
 .toast {

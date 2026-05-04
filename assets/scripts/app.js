@@ -17,6 +17,7 @@ const DEFAULT_SETTINGS = {
 const state = {
   currentView: "dashboard",
   apiHealth: "unknown",
+  selectedProjectId: null,
   currentUser: loadJson(STORAGE_KEYS.session, null),
   settings: loadJson(STORAGE_KEYS.settings, DEFAULT_SETTINGS),
   projects: loadJson(STORAGE_KEYS.projects, []),
@@ -66,6 +67,7 @@ const els = {
   reportForm: document.getElementById("report-form"),
   reportProject: document.getElementById("report-project"),
   reportDate: document.getElementById("report-date"),
+  reportPdfBtn: document.getElementById("report-pdf-btn"),
   puantajChiefLabel: document.getElementById("puantaj-chief-label"),
   puantajDate: document.getElementById("puantaj-date"),
   workerList: document.getElementById("workers-list"),
@@ -73,6 +75,7 @@ const els = {
   addWorkerBtn: document.getElementById("add-worker-btn"),
   savePuantajBtn: document.getElementById("save-puantaj-btn"),
   exportPuantajBtn: document.getElementById("export-puantaj-btn"),
+  puantajPdfBtn: document.getElementById("puantaj-pdf-btn"),
   orderForm: document.getElementById("order-form"),
   orderProject: document.getElementById("order-project"),
   orderDate: document.getElementById("order-date"),
@@ -83,6 +86,7 @@ const els = {
   orderTotal: document.getElementById("order-total"),
   orderByLabel: document.getElementById("order-by-label"),
   orderRecords: document.getElementById("order-records"),
+  ordersPdfBtn: document.getElementById("orders-pdf-btn"),
   projectForm: document.getElementById("project-form"),
   userForm: document.getElementById("user-form"),
   userName: document.getElementById("user-name"),
@@ -91,6 +95,18 @@ const els = {
   userPassword: document.getElementById("user-password"),
   userRecords: document.getElementById("user-records"),
   siteSummaryList: document.getElementById("site-summary-list"),
+  projectDetailTitle: document.getElementById("project-detail-title"),
+  projectFilterFrom: document.getElementById("project-filter-from"),
+  projectFilterTo: document.getElementById("project-filter-to"),
+  projectFilterBtn: document.getElementById("project-filter-btn"),
+  projectDetailPdfBtn: document.getElementById("project-detail-pdf-btn"),
+  projectDetailKpis: document.getElementById("project-detail-kpis"),
+  projectDetailBrief: document.getElementById("project-detail-brief"),
+  projectCostChart: document.getElementById("project-cost-chart"),
+  projectActivityChart: document.getElementById("project-activity-chart"),
+  projectDetailReports: document.getElementById("project-detail-reports"),
+  projectDetailOrders: document.getElementById("project-detail-orders"),
+  projectDetailPuantaj: document.getElementById("project-detail-puantaj"),
   recordTypeFilter: document.getElementById("record-type-filter"),
   recordProjectFilter: document.getElementById("record-project-filter"),
   recordSearch: document.getElementById("record-search"),
@@ -142,9 +158,14 @@ function bindAppEvents() {
   els.addWorkerBtn.addEventListener("click", () => addWorker());
   els.savePuantajBtn.addEventListener("click", onSavePuantaj);
   els.exportPuantajBtn.addEventListener("click", exportPuantajCsv);
+  els.reportPdfBtn.addEventListener("click", exportLatestReportPdf);
+  els.puantajPdfBtn.addEventListener("click", exportLatestPuantajPdf);
+  els.ordersPdfBtn.addEventListener("click", exportLatestOrderPdf);
   els.orderForm.addEventListener("submit", onSaveOrder);
   els.projectForm.addEventListener("submit", onSaveProject);
   els.userForm.addEventListener("submit", onSaveUser);
+  els.projectFilterBtn.addEventListener("click", renderProjectDetail);
+  els.projectDetailPdfBtn.addEventListener("click", exportProjectDetailPdf);
   els.exportRecordsBtn.addEventListener("click", exportAllJson);
   els.settingsForm.addEventListener("submit", onSaveSettings);
   els.syncBtn.addEventListener("click", () => syncFromApi());
@@ -299,6 +320,7 @@ function renderAll() {
   renderOrders();
   renderProjectManagement();
   renderRecords();
+  renderProjectDetail();
   updateSessionUi();
 }
 
@@ -357,7 +379,7 @@ function renderDashboard() {
 
 function renderProjectSummaryCard(summary) {
   return `
-    <article class="project-item">
+    <article class="project-item" data-project-open="${summary.id}">
       <div class="record-title">
         <strong>${escapeHtml(summary.name)}</strong>
         <span class="tag">${summary.reportCount} rapor</span>
@@ -390,7 +412,7 @@ function renderProjectManagement() {
 
   els.siteSummaryList.innerHTML = state.projects.length
     ? buildProjectSummaries().map((summary) => `
-        <article class="project-item">
+        <article class="project-item" data-project-open="${summary.id}">
           <div class="record-title">
             <strong>${escapeHtml(summary.name)}</strong>
             <span class="tag">${summary.progress}%</span>
@@ -402,6 +424,14 @@ function renderProjectManagement() {
         </article>
       `).join("")
     : emptyState("Henüz şantiye eklenmedi.");
+
+  document.querySelectorAll("[data-project-open]").forEach((el) => {
+    el.addEventListener("click", () => {
+      state.selectedProjectId = el.dataset.projectOpen;
+      setView("projects");
+      renderProjectDetail();
+    });
+  });
 }
 
 function renderRecords() {
@@ -453,6 +483,9 @@ function renderReportRecord(item) {
       <div class="record-meta">Yarın planı: ${escapeHtml(item.nextPlan || "-")}</div>
       <div class="record-meta">Ramak kala: ${escapeHtml(item.incident || "-")}</div>
       <div class="record-meta">Kaydı giren: ${escapeHtml(userName(item.createdById))}</div>
+      <div class="record-footer">
+        <button class="btn btn-secondary" type="button" onclick="window.__somPdf.exportReport('${item.id}')">PDF Al</button>
+      </div>
     </article>
   `;
 }
@@ -467,6 +500,9 @@ function renderPuantajRecord(item) {
       </div>
       <div class="record-meta">${item.workers.length} kişi · ${present} geldi · ${item.workers.length - present} gelmedi</div>
       <p>${item.workers.map((worker) => `${escapeHtml(worker.name)} / ${escapeHtml(projectName(worker.projectId))} / ${escapeHtml(worker.job || "-")}`).join(", ")}</p>
+      <div class="record-footer">
+        <button class="btn btn-secondary" type="button" onclick="window.__somPdf.exportPuantaj('${item.id}')">PDF Al</button>
+      </div>
     </article>
   `;
 }
@@ -483,6 +519,9 @@ function renderOrderCard(item) {
       <div class="record-meta">Birim fiyat: ${formatCurrency(item.unitPrice || 0)} · Toplam: ${formatCurrency(item.total || 0)}</div>
       <div class="record-meta">Kaynak: ${escapeHtml(item.priceSource || "-")} · Durum: ${escapeHtml(item.status || "-")}</div>
       ${item.note ? `<p>${escapeHtml(item.note)}</p>` : ""}
+      <div class="record-footer">
+        <button class="btn btn-secondary" type="button" onclick="window.__somPdf.exportOrder('${item.id}')">PDF Al</button>
+      </div>
     </article>
   `;
 }
@@ -500,7 +539,8 @@ async function onSaveReport(event) {
     nextPlan: form.get("nextPlan"),
     incident: form.get("incident"),
     notes: form.get("notes"),
-    createdById: state.currentUser.id
+    createdById: state.currentUser.id,
+    createdAt: new Date().toISOString()
   };
   const remoteSaved = await sendToApi("saveReport", payload);
   state.reports.push(payload);
@@ -559,6 +599,7 @@ async function onSavePuantaj() {
     date: els.puantajDate.value || todayStr(),
     chiefId: state.currentUser.id,
     createdById: state.currentUser.id,
+    createdAt: new Date().toISOString(),
     workers
   };
   const remoteSaved = await sendToApi("savePuantaj", payload);
@@ -606,7 +647,8 @@ async function onSaveOrder(event) {
     priceSource: form.get("priceSource"),
     orderedById: state.currentUser.id,
     status: form.get("status"),
-    note: form.get("note")
+    note: form.get("note"),
+    createdAt: new Date().toISOString()
   };
   const remoteSaved = await sendToApi("saveOrder", payload);
   state.orders.push(payload);
@@ -683,6 +725,114 @@ function requireProjects() {
   showToast("Önce proje ekleyin.");
   setView("projects");
   return false;
+}
+
+function renderProjectDetail() {
+  const projectId = state.selectedProjectId || state.projects[0]?.id;
+  if (!projectId) {
+    els.projectDetailTitle.textContent = "Bir şantiye seçin";
+    els.projectDetailKpis.innerHTML = "";
+    els.projectDetailBrief.textContent = "Önce bir proje ekleyin ya da listeden bir şantiye seçin.";
+    els.projectCostChart.innerHTML = emptyState("Önce bir proje ekleyin.");
+    els.projectActivityChart.innerHTML = "";
+    els.projectDetailReports.innerHTML = "";
+    els.projectDetailOrders.innerHTML = "";
+    els.projectDetailPuantaj.innerHTML = "";
+    return;
+  }
+
+  state.selectedProjectId = projectId;
+  const project = state.projects.find((item) => item.id === projectId);
+  const detail = getProjectDetailData(projectId);
+  els.projectDetailTitle.textContent = `${project?.name || "Proje"} Detayı`;
+  els.projectDetailKpis.innerHTML = [
+    kpiCard("Toplam Sipariş", detail.orders.length, `${formatCurrency(detail.totalCost)} maliyet`),
+    kpiCard("Saha Raporu", detail.reports.length, `${detail.latestReportDate || "Kayıt yok"} son giriş`),
+    kpiCard("Puantaj", detail.puantaj.length, `${detail.workerCount} personel`),
+    kpiCard("Bütçe Kullanımı", `${detail.budgetUsage}%`, `${formatCurrency(detail.budget)} bütçe`)
+  ].join("");
+  els.projectDetailBrief.textContent = buildProjectBrief(project, detail);
+
+  els.projectCostChart.innerHTML = renderChartRows([
+    { label: "Beton", value: detail.concreteCost, total: detail.totalCost },
+    { label: "Demir", value: detail.rebarCost, total: detail.totalCost },
+    { label: "Diğer", value: Math.max(0, detail.totalCost - detail.concreteCost - detail.rebarCost), total: detail.totalCost }
+  ]);
+
+  els.projectActivityChart.innerHTML = renderChartRows([
+    { label: "Rapor", value: detail.reports.length, total: detail.activityTotal || 1 },
+    { label: "Puantaj", value: detail.puantaj.length, total: detail.activityTotal || 1 },
+    { label: "Sipariş", value: detail.orders.length, total: detail.activityTotal || 1 }
+  ]);
+
+  els.projectDetailReports.innerHTML = detail.reports.length
+    ? detail.reports.map(renderReportRecord).join("")
+    : emptyState("Bu projeye ait saha raporu yok.");
+  els.projectDetailOrders.innerHTML = detail.orders.length
+    ? detail.orders.map(renderOrderCard).join("")
+    : emptyState("Bu projeye ait sipariş yok.");
+  els.projectDetailPuantaj.innerHTML = detail.puantaj.length
+    ? detail.puantaj.map(renderPuantajRecord).join("")
+    : emptyState("Bu projeye ait puantaj yok.");
+}
+
+function getProjectDetailData(projectId) {
+  const from = els.projectFilterFrom.value;
+  const to = els.projectFilterTo.value;
+  const inRange = (date) => (!from || date >= from) && (!to || date <= to);
+  const reports = state.reports.filter((item) => item.projectId === projectId && inRange(item.date)).sort((a, b) => b.date.localeCompare(a.date));
+  const orders = state.orders.filter((item) => item.projectId === projectId && inRange(item.date)).sort((a, b) => b.date.localeCompare(a.date));
+  const puantaj = state.puantaj.filter((entry) => inRange(entry.date) && entry.workers.some((worker) => worker.projectId === projectId)).sort((a, b) => b.date.localeCompare(a.date));
+  const concreteCost = orders.filter((item) => item.material === "Beton").reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const rebarCost = orders.filter((item) => item.material === "Demir").reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const totalCost = orders.reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const workerCount = puantaj.reduce((sum, item) => sum + item.workers.filter((worker) => worker.projectId === projectId && worker.status === "present").length, 0);
+  const budget = Number(state.projects.find((item) => item.id === projectId)?.budget || 0);
+  return {
+    reports,
+    orders,
+    puantaj,
+    concreteCost,
+    rebarCost,
+    totalCost,
+    workerCount,
+    budget,
+    budgetUsage: budget ? Math.min(100, Math.round((totalCost / budget) * 100)) : 0,
+    latestReportDate: reports[0]?.date || "",
+    latestOrderDate: orders[0]?.date || "",
+    latestPuantajDate: puantaj[0]?.date || "",
+    activityTotal: reports.length + orders.length + puantaj.length
+  };
+}
+
+function buildProjectBrief(project, detail) {
+  const projectNameText = project?.name || "Bu proje";
+  const reportText = detail.reports.length
+    ? `Son saha raporu ${detail.latestReportDate || "-"} tarihinde girildi.`
+    : "Henüz saha raporu girilmedi.";
+  const orderText = detail.orders.length
+    ? `Toplam ${detail.orders.length} sipariş kaydı ile ${formatCurrency(detail.totalCost)} maliyet oluştu.`
+    : "Henüz beton, demir veya diğer malzeme siparişi yok.";
+  const workforceText = detail.puantaj.length
+    ? `Puantaj tarafında ${detail.workerCount} personel hareketi kayıt altına alındı.`
+    : "Henüz puantaj kaydı yok.";
+  return `${projectNameText} için özet görünümdesiniz. ${reportText} ${orderText} ${workforceText}`;
+}
+
+function renderChartRows(rows) {
+  return rows.map((row) => {
+    const total = row.total || 1;
+    const percent = total > 0 ? Math.round((row.value / total) * 100) : 0;
+    return `
+      <div class="chart-row">
+        <div class="chart-meta">
+          <span>${escapeHtml(row.label)}</span>
+          <span>${row.label === "Rapor" || row.label === "Puantaj" || row.label === "Sipariş" ? row.value : formatCurrency(row.value)} · %${percent}</span>
+        </div>
+        <div class="chart-bar"><span class="chart-fill" style="width:${percent}%"></span></div>
+      </div>
+    `;
+  }).join("");
 }
 
 function exportAllJson() {
@@ -847,6 +997,205 @@ function roleLabel(role) {
   const labels = { admin: "Admin", sef: "Şef", satinalma: "Satın Alma", kullanici: "Kullanıcı" };
   return labels[role] || role || "Kullanıcı";
 }
+
+function exportLatestReportPdf() {
+  const latest = state.reports.slice().sort((a, b) => b.date.localeCompare(a.date))[0];
+  if (!latest) return showToast("Henüz saha raporu yok.");
+  exportReportPdf(latest.id);
+}
+
+function exportLatestPuantajPdf() {
+  const latest = state.puantaj.slice().sort((a, b) => b.date.localeCompare(a.date))[0];
+  if (!latest) return showToast("Henüz puantaj yok.");
+  exportPuantajPdf(latest.id);
+}
+
+function exportLatestOrderPdf() {
+  const latest = state.orders.slice().sort((a, b) => b.date.localeCompare(a.date))[0];
+  if (!latest) return showToast("Henüz sipariş yok.");
+  exportOrderPdf(latest.id);
+}
+
+async function exportReportPdf(reportId) {
+  const report = state.reports.find((item) => item.id === reportId);
+  if (!report) return;
+  const doc = await createPdfDoc("Saha Raporu");
+  await addPdfHeader(doc, "Günlük Saha Raporu", report.date, userName(report.createdById), projectName(report.projectId), report.createdAt);
+  pdfTextBlock(doc, 36, 128, [
+    ["Çalışma Saati", report.workingHours || "-"],
+    ["Bugün Yapılan İşler", report.workSummary || "-"],
+    ["Yarın Planı", report.nextPlan || "-"],
+    ["Ramak Kala", report.incident || "-"],
+    ["Ek Notlar", report.notes || "-"],
+    ["Kayıt Zamanı", report.createdAt || report.date]
+  ]);
+  doc.save(`SahaRaporu_${safeName(projectName(report.projectId))}_${report.date}.pdf`);
+}
+
+async function exportPuantajPdf(puantajId) {
+  const item = state.puantaj.find((row) => row.id === puantajId);
+  if (!item) return;
+  const doc = await createPdfDoc("Puantaj");
+  await addPdfHeader(doc, "Günlük Puantaj Raporu", item.date, userName(item.createdById), userName(item.chiefId), item.createdAt);
+  const body = item.workers.map((worker) => [worker.name, projectName(worker.projectId), worker.job || "-", worker.status === "present" ? "Geldi" : "Gelmedi"]);
+  doc.autoTable({
+    startY: 128,
+    head: [["Personel", "Proje", "Görev", "Durum"]],
+    body
+  });
+  doc.save(`Puantaj_${item.date}.pdf`);
+}
+
+async function exportOrderPdf(orderId) {
+  const order = state.orders.find((item) => item.id === orderId);
+  if (!order) return;
+  const doc = await createPdfDoc("Sipariş");
+  await addPdfHeader(doc, "Beton / Demir Sipariş Raporu", order.date, userName(order.orderedById), projectName(order.projectId), order.createdAt);
+  pdfTextBlock(doc, 36, 128, [
+    ["Malzeme", order.material || "-"],
+    ["Özellik", order.spec || "-"],
+    ["Miktar", `${order.quantity || 0} ${order.unit || ""}`],
+    ["Tedarikçi", order.supplier || "-"],
+    ["Birim Fiyat", formatCurrency(order.unitPrice || 0)],
+    ["Toplam", formatCurrency(order.total || 0)],
+    ["Fiyat Kaynağı", order.priceSource || "-"],
+    ["Durum", order.status || "-"],
+    ["Not", order.note || "-"],
+    ["Kayıt Zamanı", order.createdAt || order.date]
+  ]);
+  doc.save(`Siparis_${safeName(projectName(order.projectId))}_${order.date}.pdf`);
+}
+
+async function exportProjectDetailPdf() {
+  if (!state.selectedProjectId) return showToast("Önce bir proje seçin.");
+  const project = state.projects.find((item) => item.id === state.selectedProjectId);
+  const detail = getProjectDetailData(state.selectedProjectId);
+  const doc = await createPdfDoc("Proje Detay");
+  await addPdfHeader(doc, "Şantiye Detay Raporu", todayStr(), state.currentUser?.name || "-", project?.name || "-", new Date().toISOString());
+  pdfTextBlock(doc, 36, 128, [
+    ["Konum", project?.location || "-"],
+    ["Tarih Aralığı", projectDurationText(project?.startDate, project?.endDate)],
+    ["Bütçe", formatCurrency(project?.budget || 0)],
+    ["Sipariş Maliyeti", formatCurrency(detail.totalCost)],
+    ["Rapor Sayısı", String(detail.reports.length)],
+    ["Puantaj Sayısı", String(detail.puantaj.length)],
+    ["Personel", String(detail.workerCount)]
+  ]);
+  doc.autoTable({
+    startY: 230,
+    head: [["Özet Alanı", "Değer"]],
+    body: [
+      ["Beton Maliyeti", formatCurrency(detail.concreteCost)],
+      ["Demir Maliyeti", formatCurrency(detail.rebarCost)],
+      ["Bütçe Kullanımı", `%${detail.budgetUsage}`]
+    ]
+  });
+  doc.addPage();
+  await addPdfHeader(doc, "Şantiye Detay Raporu / Saha Raporları", todayStr(), state.currentUser?.name || "-", project?.name || "-", new Date().toISOString());
+  doc.text("Saha Raporları", 36, 156);
+  doc.autoTable({
+    startY: 170,
+    head: [["Tarih", "Kullanıcı", "Çalışma", "Ramak Kala"]],
+    body: detail.reports.map((item) => [item.date, userName(item.createdById), item.workingHours || "-", item.incident || "-"])
+  });
+  doc.addPage();
+  await addPdfHeader(doc, "Şantiye Detay Raporu / Siparişler", todayStr(), state.currentUser?.name || "-", project?.name || "-", new Date().toISOString());
+  doc.text("Siparişler", 36, 156);
+  doc.autoTable({
+    startY: 170,
+    head: [["Tarih", "Malzeme", "Tedarikçi", "Toplam", "Giren"]],
+    body: detail.orders.map((item) => [item.date, item.material, item.supplier || "-", formatCurrency(item.total || 0), userName(item.orderedById)])
+  });
+  doc.addPage();
+  await addPdfHeader(doc, "Şantiye Detay Raporu / Puantaj", todayStr(), state.currentUser?.name || "-", project?.name || "-", new Date().toISOString());
+  doc.text("Puantaj", 36, 156);
+  doc.autoTable({
+    startY: 170,
+    head: [["Tarih", "Kaydı Giren", "Personel", "Gelen"]],
+    body: detail.puantaj.map((item) => [item.date, userName(item.createdById), item.workers.length, item.workers.filter((w) => w.status === "present").length])
+  });
+  doc.save(`SantiyeDetay_${safeName(project?.name || "Proje")}.pdf`);
+}
+
+async function createPdfDoc(subject) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  doc.setProperties({ title: subject, subject, author: state.currentUser?.name || "Ayazlar Yapı" });
+  try {
+    doc.__logoDataUrl = await loadLogoDataUrl();
+  } catch (error) {
+    console.warn("Logo yüklenemedi.", error);
+  }
+  return doc;
+}
+
+async function addPdfHeader(doc, title, date, person, context, createdAt) {
+  doc.setFillColor(24, 29, 51);
+  doc.rect(0, 0, 595, 92, "F");
+  if (doc.__logoDataUrl) {
+    doc.addImage(doc.__logoDataUrl, "JPEG", 36, 18, 56, 56);
+  }
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.text("AYAZLAR YAPI", 106, 42);
+  doc.setFontSize(11);
+  doc.text("Şantiye Operasyon Merkezi", 106, 60);
+  doc.setFontSize(16);
+  doc.text(title, 36, 102);
+  doc.setTextColor(60, 67, 80);
+  doc.setFontSize(10);
+  doc.text(`Tarih: ${date}`, 36, 118);
+  doc.text(`Saat: ${formatDateTime(createdAt || new Date().toISOString())}`, 36, 134);
+  doc.text(`Raporu Alan / Oluşturan: ${person}`, 220, 118);
+  doc.text(`Bağlam: ${context}`, 430, 118, { align: "right" });
+}
+
+function pdfTextBlock(doc, x, y, rows) {
+  let currentY = y;
+  doc.setFontSize(10);
+  rows.forEach(([label, value]) => {
+    doc.setTextColor(80, 86, 102);
+    doc.text(`${label}:`, x, currentY);
+    doc.setTextColor(30, 33, 40);
+    const split = doc.splitTextToSize(String(value), 420);
+    doc.text(split, x + 110, currentY);
+    currentY += Math.max(18, split.length * 12);
+  });
+}
+
+function safeName(value) {
+  return String(value || "rapor").replaceAll(/\s+/g, "_").replaceAll(/[^\wğüşöçıİĞÜŞÖÇ-]/g, "");
+}
+
+async function loadLogoDataUrl() {
+  if (loadLogoDataUrl.cached) return loadLogoDataUrl.cached;
+  const response = await fetch("./assets/logo-ayazlar.jpg");
+  const blob = await response.blob();
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+  loadLogoDataUrl.cached = dataUrl;
+  return dataUrl;
+}
+
+function formatDateTime(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("tr-TR", {
+    dateStyle: "short",
+    timeStyle: "short"
+  }).format(date);
+}
+
+window.__somPdf = {
+  exportReport: exportReportPdf,
+  exportPuantaj: exportPuantajPdf,
+  exportOrder: exportOrderPdf
+};
 
 function kpiCard(label, value, note) {
   return `

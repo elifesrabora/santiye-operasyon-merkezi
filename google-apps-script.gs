@@ -100,7 +100,9 @@ function readReports() {
       workSummary: row[4] || "",
       nextPlan: row[5] || "",
       incident: row[6] || "",
-      notes: row[7] || ""
+      notes: row[7] || "",
+      createdById: row[8] || "",
+      createdAt: row[9] || ""
     };
   }).filter(function(item) { return item.id; });
 }
@@ -127,6 +129,8 @@ function readPuantaj() {
       id: row[0] || "",
       date: normalizeDate_(row[1]),
       chiefId: row[2] || "",
+      createdById: row[3] || "",
+      createdAt: row[4] || "",
       workers: workersByEntry[row[0]] || []
     };
   }).filter(function(item) { return item.id; });
@@ -149,7 +153,8 @@ function readOrders() {
       priceSource: row[10] || "",
       orderedById: row[11] || "",
       status: row[12] || "",
-      note: row[13] || ""
+      note: row[13] || "",
+      createdAt: row[14] || ""
     };
   }).filter(function(item) { return item.id; });
 }
@@ -163,7 +168,9 @@ function saveReport(payload) {
     payload.workSummary || "",
     payload.nextPlan || "",
     payload.incident || "",
-    payload.notes || ""
+    payload.notes || "",
+    payload.createdById || "",
+    payload.createdAt || new Date().toISOString()
   ]);
 }
 
@@ -172,7 +179,9 @@ function savePuantaj(payload) {
   getSheet_(SHEETS.puantaj).appendRow([
     puantajId,
     payload.date || "",
-    payload.chiefId || ""
+    payload.chiefId || "",
+    payload.createdById || "",
+    payload.createdAt || new Date().toISOString()
   ]);
 
   (payload.workers || []).forEach(function(worker) {
@@ -201,7 +210,8 @@ function saveOrder(payload) {
     payload.priceSource || "",
     payload.orderedById || "",
     payload.status || "",
-    payload.note || ""
+    payload.note || "",
+    payload.createdAt || new Date().toISOString()
   ]);
 }
 
