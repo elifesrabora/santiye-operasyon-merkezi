@@ -4,7 +4,8 @@ const STORAGE_KEYS = {
   puantaj: "som_puantaj",
   projects: "som_projects",
   users: "som_users",
-  orders: "som_orders"
+  orders: "som_orders",
+  session: "som_session"
 };
 
 const DEFAULT_SETTINGS = {
@@ -16,6 +17,7 @@ const DEFAULT_SETTINGS = {
 const state = {
   currentView: "dashboard",
   apiHealth: "unknown",
+  currentUser: loadJson(STORAGE_KEYS.session, null),
   settings: loadJson(STORAGE_KEYS.settings, DEFAULT_SETTINGS),
   projects: loadJson(STORAGE_KEYS.projects, []),
   users: loadJson(STORAGE_KEYS.users, []),
@@ -29,7 +31,7 @@ const AUTO_SYNC_MS = 60000;
 const viewMeta = {
   dashboard: ["Dashboard", "Saha, puantaj, sipariş ve şantiye özetini tek ekranda izleyin."],
   report: ["Günlük Saha Raporu", "Projeye ait günlük ilerleme, plan ve ramak kala kaydını girin."],
-  puantaj: ["Puantaj", "Admin tarafından tanımlanan şef ve projelerle günlük personel kaydı tutun."],
+  puantaj: ["Puantaj", "Oturum açan kullanıcının adıyla günlük personel kaydı tutun."],
   orders: ["Siparişler", "Beton, demir ve diğer siparişlerin fiyat, kaynak ve giren kişi takibini yapın."],
   projects: ["Şantiyeler", "Projeleri ve kullanıcıları yönetin, proje bazlı toplu özetleri görün."],
   records: ["Kayıtlar", "Saha raporu, puantaj ve sipariş geçmişini bir arada inceleyin."],
@@ -37,6 +39,20 @@ const viewMeta = {
 };
 
 const els = {
+  loginScreen: document.getElementById("login-screen"),
+  appShell: document.getElementById("app-shell"),
+  loginForm: document.getElementById("login-form"),
+  loginUsername: document.getElementById("login-username"),
+  loginPassword: document.getElementById("login-password"),
+  loginError: document.getElementById("login-error"),
+  loginSubmit: document.getElementById("login-submit"),
+  loginModeTitle: document.getElementById("login-mode-title"),
+  loginCopy: document.getElementById("login-copy"),
+  firstUserFields: document.getElementById("first-user-fields"),
+  setupName: document.getElementById("setup-name"),
+  sessionName: document.getElementById("session-name"),
+  sessionRole: document.getElementById("session-role"),
+  logoutBtn: document.getElementById("logout-btn"),
   navItems: [...document.querySelectorAll(".nav-item")],
   views: [...document.querySelectorAll(".view")],
   title: document.getElementById("page-title"),
@@ -50,7 +66,7 @@ const els = {
   reportForm: document.getElementById("report-form"),
   reportProject: document.getElementById("report-project"),
   reportDate: document.getElementById("report-date"),
-  puantajChief: document.getElementById("puantaj-chief"),
+  puantajChiefLabel: document.getElementById("puantaj-chief-label"),
   puantajDate: document.getElementById("puantaj-date"),
   workerList: document.getElementById("workers-list"),
   workerTemplate: document.getElementById("worker-template"),
@@ -65,10 +81,14 @@ const els = {
   orderUnit: document.getElementById("order-unit"),
   orderUnitPrice: document.getElementById("order-unit-price"),
   orderTotal: document.getElementById("order-total"),
-  orderBy: document.getElementById("order-by"),
+  orderByLabel: document.getElementById("order-by-label"),
   orderRecords: document.getElementById("order-records"),
   projectForm: document.getElementById("project-form"),
   userForm: document.getElementById("user-form"),
+  userName: document.getElementById("user-name"),
+  userUsername: document.getElementById("user-username"),
+  userRole: document.getElementById("user-role"),
+  userPassword: document.getElementById("user-password"),
   userRecords: document.getElementById("user-records"),
   siteSummaryList: document.getElementById("site-summary-list"),
   recordTypeFilter: document.getElementById("record-type-filter"),
@@ -86,16 +106,32 @@ const els = {
 
 boot();
 
-function boot() {
+async function boot() {
   wireNavigation();
   document.querySelectorAll("[data-view-jump]").forEach((button) => {
     button.addEventListener("click", () => setView(button.dataset.viewJump));
   });
+  els.logoutBtn.addEventListener("click", doLogout);
+  els.loginForm.addEventListener("submit", onLoginSubmit);
   hydrateForms();
-  renderAll();
-  setConnectionPill();
-  addWorker();
+  bindAppEvents();
+  renderAuthMode();
 
+  if (state.currentUser) {
+    showApp();
+  } else {
+    showLogin();
+  }
+
+  if (state.settings.apiBaseUrl) {
+    syncFromApi({ silent: true });
+    window.setInterval(() => syncFromApi({ silent: true }), AUTO_SYNC_MS);
+  } else {
+    renderAll();
+  }
+}
+
+function bindAppEvents() {
   els.reportDate.value = todayStr();
   els.puantajDate.value = todayStr();
   els.orderDate.value = todayStr();
@@ -118,17 +154,126 @@ function boot() {
     updateOrderTotal();
   }));
   els.orderMaterial.addEventListener("change", syncOrderUnit);
-
-  if (state.settings.apiBaseUrl) {
-    syncFromApi({ silent: true });
-    window.setInterval(() => syncFromApi({ silent: true }), AUTO_SYNC_MS);
-  }
 }
 
 function wireNavigation() {
-  els.navItems.forEach((item) => {
-    item.addEventListener("click", () => setView(item.dataset.view));
-  });
+  els.navItems.forEach((item) => item.addEventListener("click", () => setView(item.dataset.view)));
+}
+
+function hydrateForms() {
+  els.settingsApiUrl.value = state.settings.apiBaseUrl;
+  els.settingsCompanyName.value = state.settings.companyName;
+  els.settingsSheetNote.value = state.settings.sheetNote;
+}
+
+function renderAuthMode() {
+  const hasUsers = state.users.length > 0;
+  els.firstUserFields.classList.toggle("hidden", hasUsers);
+  els.loginModeTitle.textContent = hasUsers ? "Giriş Yap" : "İlk Admin Kurulumu";
+  els.loginCopy.textContent = hasUsers
+    ? "Kullanıcı adınız ve şifreniz ile giriş yapın."
+    : "Sistemi başlatmak için ilk admin hesabını oluşturun.";
+  els.loginSubmit.textContent = hasUsers ? "Giriş Yap" : "İlk Admini Oluştur";
+}
+
+function showLogin() {
+  els.loginScreen.classList.remove("hidden");
+  els.appShell.classList.add("hidden");
+  renderAuthMode();
+}
+
+function showApp() {
+  els.loginScreen.classList.add("hidden");
+  els.appShell.classList.remove("hidden");
+  updateSessionUi();
+  renderAll();
+  setConnectionPill();
+}
+
+async function onLoginSubmit(event) {
+  event.preventDefault();
+  els.loginError.textContent = "";
+  els.loginError.style.display = "none";
+
+  if (state.users.length === 0) {
+    await createFirstAdmin();
+    return;
+  }
+
+  const username = els.loginUsername.value.trim();
+  const password = els.loginPassword.value;
+  const passwordHash = await sha256(password);
+  const user = state.users.find((item) => item.username === username && item.passwordHash === passwordHash && item.active !== false);
+
+  if (!user) {
+    showLoginError("Kullanıcı adı veya şifre hatalı.");
+    return;
+  }
+
+  state.currentUser = normalizeUser(user);
+  persist(STORAGE_KEYS.session, state.currentUser);
+  showApp();
+  showToast("Giriş başarılı.");
+}
+
+async function createFirstAdmin() {
+  const name = els.setupName.value.trim();
+  const username = els.loginUsername.value.trim();
+  const password = els.loginPassword.value;
+
+  if (!name || !username || !password) {
+    showLoginError("İlk admin için ad soyad, kullanıcı adı ve şifre gerekli.");
+    return;
+  }
+
+  const payload = {
+    id: crypto.randomUUID(),
+    name,
+    username,
+    passwordHash: await sha256(password),
+    role: "admin",
+    active: true
+  };
+
+  state.users.push(payload);
+  persist(STORAGE_KEYS.users, state.users);
+  state.currentUser = normalizeUser(payload);
+  persist(STORAGE_KEYS.session, state.currentUser);
+  showApp();
+  showToast("İlk admin oluşturuldu.");
+}
+
+function showLoginError(message) {
+  els.loginError.textContent = message;
+  els.loginError.style.display = "block";
+}
+
+function doLogout() {
+  state.currentUser = null;
+  localStorage.removeItem(STORAGE_KEYS.session);
+  els.loginForm.reset();
+  showLogin();
+}
+
+function updateSessionUi() {
+  const user = state.currentUser;
+  els.sessionName.textContent = user?.name || "—";
+  els.sessionRole.textContent = roleLabel(user?.role || "");
+  els.puantajChiefLabel.value = user?.name || "";
+  els.orderByLabel.value = user?.name || "";
+  const isAdmin = user?.role === "admin";
+  els.userForm.closest(".panel").style.display = isAdmin ? "" : "none";
+}
+
+function normalizeUser(user) {
+  return {
+    id: user.id,
+    name: user.name || user.ad || user.username,
+    username: user.username || user.name,
+    role: user.role || "kullanici",
+    passwordHash: user.passwordHash,
+    active: user.active !== false
+  };
 }
 
 function setView(viewName) {
@@ -140,19 +285,13 @@ function setView(viewName) {
   els.subtitle.textContent = subtitle;
 }
 
-function hydrateForms() {
-  els.settingsApiUrl.value = state.settings.apiBaseUrl;
-  els.settingsCompanyName.value = state.settings.companyName;
-  els.settingsSheetNote.value = state.settings.sheetNote;
-}
-
 function renderAll() {
   renderProjectOptions();
-  renderUserOptions();
   renderDashboard();
   renderOrders();
   renderProjectManagement();
   renderRecords();
+  updateSessionUi();
 }
 
 function renderProjectOptions() {
@@ -160,7 +299,7 @@ function renderProjectOptions() {
     ? state.projects.map((project) => `<option value="${project.id}">${escapeHtml(project.name)}</option>`).join("")
     : '<option value="">Önce proje ekleyin</option>';
 
-  const filterOptions = ['<option value="all">Tum Projeler</option>']
+  const filterOptions = ['<option value="all">Tüm Projeler</option>']
     .concat(state.projects.map((project) => `<option value="${project.id}">${escapeHtml(project.name)}</option>`))
     .join("");
 
@@ -168,19 +307,7 @@ function renderProjectOptions() {
     select.innerHTML = projectOptions;
     select.disabled = state.projects.length === 0;
   });
-
   els.recordProjectFilter.innerHTML = filterOptions;
-}
-
-function renderUserOptions() {
-  const userOptions = state.users.length
-    ? state.users.map((user) => `<option value="${user.id}">${escapeHtml(user.name)}${user.role ? ` · ${escapeHtml(user.role)}` : ""}</option>`).join("")
-    : '<option value="">Önce kullanıcı ekleyin</option>';
-
-  [els.puantajChief, els.orderBy].forEach((select) => {
-    select.innerHTML = userOptions;
-    select.disabled = state.users.length === 0;
-  });
 }
 
 function renderDashboard() {
@@ -193,95 +320,79 @@ function renderDashboard() {
     kpiCard("Aktif Proje", totalProjects, `${countToday(state.reports)} bugün rapor girişi`),
     kpiCard("Sipariş", totalOrders, `${formatCurrency(totalOrderCost)} toplam maliyet`),
     kpiCard("Puantaj", state.puantaj.length, `${totalPresentCount()} gelen personel kaydı`),
-    kpiCard("Kullanıcı", state.users.length, "Admin tarafından tanımlı şef ve ekip")
+    kpiCard("Kullanıcı", state.users.length, "Tanımlı giriş hesabı")
   ].join("");
 
   els.projectList.innerHTML = state.projects.length
-    ? buildProjectSummaries()
-        .map(
-          (summary) => `
-            <article class="project-item">
-              <div class="record-title">
-                <strong>${escapeHtml(summary.name)}</strong>
-                <span class="tag">${summary.reportCount} rapor</span>
-              </div>
-              <div class="project-meta">${escapeHtml(summary.location || "Konum girilmedi")} · ${summary.durationText}</div>
-              <div class="project-meta">Sipariş maliyeti: ${formatCurrency(summary.totalCost)} · Puantaj personeli: ${summary.workerCount}</div>
-              <div class="progress"><span style="width:${summary.progress}%"></span></div>
-            </article>
-          `
-        )
-        .join("")
+    ? buildProjectSummaries().map(renderProjectSummaryCard).join("")
     : emptyState("Henüz proje eklenmedi. Önce Şantiyeler sekmesinden proje girin.");
 
   const feed = [
-    ...state.reports.map((item) => ({ type: "Rapor", date: item.date, text: `${projectName(item.projectId)} için saha raporu girildi.` })),
-    ...state.puantaj.map((item) => ({ type: "Puantaj", date: item.date, text: `${userName(item.chiefId)} tarafından ${item.workers.length} kişilik puantaj kaydı oluşturuldu.` })),
-    ...state.orders.map((item) => ({ type: "Sipariş", date: item.date, text: `${projectName(item.projectId)} için ${item.material} siparişi oluşturuldu.` }))
-  ]
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 8);
+    ...state.reports.map((item) => ({ type: "Rapor", date: item.date, text: `${projectName(item.projectId)} için saha raporu girildi.`, by: userName(item.createdById) })),
+    ...state.puantaj.map((item) => ({ type: "Puantaj", date: item.date, text: `${userName(item.createdById)} tarafından ${item.workers.length} kişilik puantaj kaydı oluşturuldu.`, by: userName(item.createdById) })),
+    ...state.orders.map((item) => ({ type: "Sipariş", date: item.date, text: `${projectName(item.projectId)} için ${item.material} siparişi oluşturuldu.`, by: userName(item.orderedById) }))
+  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
 
   els.todayFeed.innerHTML = feed.length
-    ? feed
-        .map(
-          (item) => `
-            <article class="timeline-item">
-              <div class="record-title">
-                <strong>${item.type}</strong>
-                <span class="tag">${item.date}</span>
-              </div>
-              <p>${escapeHtml(item.text)}</p>
-            </article>
-          `
-        )
-        .join("")
+    ? feed.map((item) => `
+        <article class="timeline-item">
+          <div class="record-title">
+            <strong>${item.type}</strong>
+            <span class="tag">${item.date}</span>
+          </div>
+          <p>${escapeHtml(item.text)}</p>
+          <div class="record-meta">Girilen kullanıcı: ${escapeHtml(item.by || "-")}</div>
+        </article>
+      `).join("")
     : '<div class="timeline-item"><p>Henüz hareket yok. Önce proje, kullanıcı ve kayıt girişi yapın.</p></div>';
+}
+
+function renderProjectSummaryCard(summary) {
+  return `
+    <article class="project-item">
+      <div class="record-title">
+        <strong>${escapeHtml(summary.name)}</strong>
+        <span class="tag">${summary.reportCount} rapor</span>
+      </div>
+      <div class="project-meta">${escapeHtml(summary.location || "Konum girilmedi")} · ${summary.durationText}</div>
+      <div class="project-meta">Sipariş maliyeti: ${formatCurrency(summary.totalCost)} · Puantaj personeli: ${summary.workerCount}</div>
+      <div class="progress"><span style="width:${summary.progress}%"></span></div>
+    </article>
+  `;
 }
 
 function renderOrders() {
   els.orderRecords.innerHTML = state.orders.length
-    ? state.orders
-        .slice()
-        .sort((a, b) => b.date.localeCompare(a.date))
-        .map(renderOrderCard)
-        .join("")
+    ? state.orders.slice().sort((a, b) => b.date.localeCompare(a.date)).map(renderOrderCard).join("")
     : emptyState("Henüz sipariş girilmedi.");
 }
 
 function renderProjectManagement() {
   els.userRecords.innerHTML = state.users.length
-    ? state.users
-        .map(
-          (user) => `
-            <article class="record-card">
-              <div class="record-title">
-                <strong>${escapeHtml(user.name)}</strong>
-                <span class="tag">${escapeHtml(user.role || "Rol yok")}</span>
-              </div>
-            </article>
-          `
-        )
-        .join("")
+    ? state.users.map((user) => `
+        <article class="record-card">
+          <div class="record-title">
+            <strong>${escapeHtml(user.name || user.ad || user.username)}</strong>
+            <span class="tag">${escapeHtml(roleLabel(user.role || ""))}</span>
+          </div>
+          <div class="record-meta">@${escapeHtml(user.username || "-")}</div>
+        </article>
+      `).join("")
     : emptyState("Henüz kullanıcı eklenmedi.");
 
   els.siteSummaryList.innerHTML = state.projects.length
-    ? buildProjectSummaries()
-        .map(
-          (summary) => `
-            <article class="project-item">
-              <div class="record-title">
-                <strong>${escapeHtml(summary.name)}</strong>
-                <span class="tag">${summary.progress}%</span>
-              </div>
-              <div class="project-meta">${escapeHtml(summary.location || "Konum girilmedi")} · ${summary.durationText}</div>
-              <div class="project-meta">Bütçe: ${formatCurrency(summary.budget)} · Sipariş maliyeti: ${formatCurrency(summary.totalCost)}</div>
-              <div class="project-meta">Rapor: ${summary.reportCount} · Puantaj: ${summary.puantajCount} · Personel: ${summary.workerCount}</div>
-              <div class="progress"><span style="width:${summary.progress}%"></span></div>
-            </article>
-          `
-        )
-        .join("")
+    ? buildProjectSummaries().map((summary) => `
+        <article class="project-item">
+          <div class="record-title">
+            <strong>${escapeHtml(summary.name)}</strong>
+            <span class="tag">${summary.progress}%</span>
+          </div>
+          <div class="project-meta">${escapeHtml(summary.location || "Konum girilmedi")} · ${summary.durationText}</div>
+          <div class="project-meta">Bütçe: ${formatCurrency(summary.budget)} · Sipariş maliyeti: ${formatCurrency(summary.totalCost)}</div>
+          <div class="project-meta">Rapor: ${summary.reportCount} · Puantaj: ${summary.puantajCount} · Personel: ${summary.workerCount}</div>
+          <div class="progress"><span style="width:${summary.progress}%"></span></div>
+        </article>
+      `).join("")
     : emptyState("Henüz şantiye eklenmedi.");
 }
 
@@ -300,7 +411,7 @@ function renderRecords() {
   const filteredPuantaj = state.puantaj.filter((item) => {
     if (typeFilter !== "all" && typeFilter !== "puantaj") return false;
     if (projectFilter !== "all" && !item.workers.some((worker) => worker.projectId === projectFilter)) return false;
-    const target = `${userName(item.chiefId)} ${item.workers.map((worker) => worker.name).join(" ")}`.toLocaleLowerCase("tr-TR");
+    const target = `${userName(item.createdById)} ${item.workers.map((worker) => worker.name).join(" ")}`.toLocaleLowerCase("tr-TR");
     return !search || target.includes(search);
   });
 
@@ -314,11 +425,9 @@ function renderRecords() {
   els.reportRecords.innerHTML = filteredReports.length
     ? filteredReports.slice().sort((a, b) => b.date.localeCompare(a.date)).map(renderReportRecord).join("")
     : emptyState("Filtreye uygun saha raporu bulunamadı.");
-
   els.puantajRecords.innerHTML = filteredPuantaj.length
     ? filteredPuantaj.slice().sort((a, b) => b.date.localeCompare(a.date)).map(renderPuantajRecord).join("")
     : emptyState("Filtreye uygun puantaj bulunamadı.");
-
   els.recordsOrderList.innerHTML = filteredOrders.length
     ? filteredOrders.slice().sort((a, b) => b.date.localeCompare(a.date)).map(renderOrderCard).join("")
     : emptyState("Filtreye uygun sipariş bulunamadı.");
@@ -335,6 +444,7 @@ function renderReportRecord(item) {
       <p>${escapeHtml(item.workSummary || "Bugün yapılan iş bilgisi yok.")}</p>
       <div class="record-meta">Yarın planı: ${escapeHtml(item.nextPlan || "-")}</div>
       <div class="record-meta">Ramak kala: ${escapeHtml(item.incident || "-")}</div>
+      <div class="record-meta">Kaydı giren: ${escapeHtml(userName(item.createdById))}</div>
     </article>
   `;
 }
@@ -344,7 +454,7 @@ function renderPuantajRecord(item) {
   return `
     <article class="record-card">
       <div class="record-title">
-        <strong>${escapeHtml(userName(item.chiefId))}</strong>
+        <strong>${escapeHtml(userName(item.createdById))}</strong>
         <span class="tag">${item.date}</span>
       </div>
       <div class="record-meta">${item.workers.length} kişi · ${present} geldi · ${item.workers.length - present} gelmedi</div>
@@ -371,12 +481,7 @@ function renderOrderCard(item) {
 
 async function onSaveReport(event) {
   event.preventDefault();
-  if (!state.projects.length) {
-    showToast("Önce proje ekleyin.");
-    setView("projects");
-    return;
-  }
-
+  if (!requireAuth() || !requireProjects()) return;
   const form = new FormData(els.reportForm);
   const payload = {
     id: crypto.randomUUID(),
@@ -386,9 +491,9 @@ async function onSaveReport(event) {
     workSummary: form.get("workSummary"),
     nextPlan: form.get("nextPlan"),
     incident: form.get("incident"),
-    notes: form.get("notes")
+    notes: form.get("notes"),
+    createdById: state.currentUser.id
   };
-
   const remoteSaved = await sendToApi("saveReport", payload);
   state.reports.push(payload);
   persist(STORAGE_KEYS.reports, state.reports);
@@ -404,12 +509,10 @@ function addWorker(worker = null) {
   const projectSelect = node.querySelector(".worker-project");
   const jobInput = node.querySelector(".worker-job");
   const nameInput = node.querySelector(".worker-name");
-
   projectSelect.innerHTML = state.projects.length
     ? state.projects.map((project) => `<option value="${project.id}">${escapeHtml(project.name)}</option>`).join("")
     : '<option value="">Önce proje ekleyin</option>';
   projectSelect.disabled = state.projects.length === 0;
-
   if (worker) {
     nameInput.value = worker.name;
     projectSelect.value = worker.projectId;
@@ -418,20 +521,14 @@ function addWorker(worker = null) {
   } else {
     setWorkerStatus(node, "present");
   }
-
   deleteBtn.addEventListener("click", () => node.remove());
-  node.querySelectorAll(".status-btn").forEach((button) => {
-    button.addEventListener("click", () => setWorkerStatus(node, button.dataset.status));
-  });
-
+  node.querySelectorAll(".status-btn").forEach((button) => button.addEventListener("click", () => setWorkerStatus(node, button.dataset.status)));
   els.workerList.appendChild(node);
 }
 
 function setWorkerStatus(node, status) {
   node.dataset.status = status;
-  node.querySelectorAll(".status-btn").forEach((button) => {
-    button.classList.toggle("active", button.dataset.status === status);
-  });
+  node.querySelectorAll(".status-btn").forEach((button) => button.classList.toggle("active", button.dataset.status === status));
 }
 
 function readWorkers() {
@@ -446,25 +543,16 @@ function readWorkers() {
 }
 
 async function onSavePuantaj() {
-  if (!state.users.length) {
-    showToast("Önce kullanıcı / şef ekleyin.");
-    setView("projects");
-    return;
-  }
-
+  if (!requireAuth() || !requireProjects()) return;
   const workers = readWorkers();
-  if (!workers.length) {
-    showToast("Kaydetmek için en az bir personel girin.");
-    return;
-  }
-
+  if (!workers.length) return showToast("Kaydetmek için en az bir personel girin.");
   const payload = {
     id: crypto.randomUUID(),
     date: els.puantajDate.value || todayStr(),
-    chiefId: els.puantajChief.value,
+    chiefId: state.currentUser.id,
+    createdById: state.currentUser.id,
     workers
   };
-
   const remoteSaved = await sendToApi("savePuantaj", payload);
   state.puantaj.push(payload);
   persist(STORAGE_KEYS.puantaj, state.puantaj);
@@ -481,21 +569,10 @@ function resetPuantajForm() {
 
 function exportPuantajCsv() {
   const workers = readWorkers();
-  if (!workers.length) {
-    showToast("CSV için önce personel ekleyin.");
-    return;
-  }
-
+  if (!workers.length) return showToast("CSV için önce personel ekleyin.");
   const rows = [
     ["tarih", "sef", "personel", "durum", "proje", "gorev"],
-    ...workers.map((worker) => [
-      els.puantajDate.value || todayStr(),
-      userName(els.puantajChief.value),
-      worker.name,
-      worker.status,
-      projectName(worker.projectId),
-      worker.job
-    ])
+    ...workers.map((worker) => [els.puantajDate.value || todayStr(), state.currentUser?.name || "", worker.name, worker.status, projectName(worker.projectId), worker.job])
   ];
   downloadFile("puantaj.csv", toCsv(rows), "text/csv;charset=utf-8;");
   showToast("Puantaj CSV indirildi.");
@@ -503,17 +580,7 @@ function exportPuantajCsv() {
 
 async function onSaveOrder(event) {
   event.preventDefault();
-  if (!state.projects.length) {
-    showToast("Önce proje ekleyin.");
-    setView("projects");
-    return;
-  }
-  if (!state.users.length) {
-    showToast("Önce kullanıcı ekleyin.");
-    setView("projects");
-    return;
-  }
-
+  if (!requireAuth() || !requireProjects()) return;
   const form = new FormData(els.orderForm);
   const quantity = Number(form.get("quantity") || 0);
   const unitPrice = Number(form.get("unitPrice") || 0);
@@ -529,11 +596,10 @@ async function onSaveOrder(event) {
     unitPrice,
     total: quantity * unitPrice,
     priceSource: form.get("priceSource"),
-    orderedById: form.get("orderedBy"),
+    orderedById: state.currentUser.id,
     status: form.get("status"),
     note: form.get("note")
   };
-
   const remoteSaved = await sendToApi("saveOrder", payload);
   state.orders.push(payload);
   persist(STORAGE_KEYS.orders, state.orders);
@@ -547,13 +613,10 @@ async function onSaveOrder(event) {
 
 async function onSaveProject(event) {
   event.preventDefault();
+  if (!requireAdmin()) return;
   const form = new FormData(els.projectForm);
   const name = String(form.get("name") || "").trim();
-  if (!name) {
-    showToast("Proje adı gerekli.");
-    return;
-  }
-
+  if (!name) return showToast("Proje adı gerekli.");
   const payload = {
     id: crypto.randomUUID(),
     name,
@@ -562,34 +625,56 @@ async function onSaveProject(event) {
     endDate: String(form.get("endDate") || ""),
     budget: Number(form.get("budget") || 0)
   };
-
+  const remoteSaved = await sendToApi("saveProject", payload);
   state.projects.push(payload);
   persist(STORAGE_KEYS.projects, state.projects);
   renderAll();
+  refreshWorkerProjectOptions();
   els.projectForm.reset();
-  showToast("Proje eklendi.");
+  showToast(remoteSaved ? "Proje kaydedildi." : "Proje yerelde kaydedildi.");
 }
 
 async function onSaveUser(event) {
   event.preventDefault();
-  const form = new FormData(els.userForm);
-  const name = String(form.get("name") || "").trim();
-  if (!name) {
-    showToast("Kullanıcı adı gerekli.");
-    return;
-  }
-
+  if (!requireAdmin()) return;
+  const name = els.userName.value.trim();
+  const username = els.userUsername.value.trim();
+  const password = els.userPassword.value;
+  if (!name || !username || !password) return showToast("Ad soyad, kullanıcı adı ve şifre gerekli.");
+  if (state.users.some((user) => user.username === username)) return showToast("Bu kullanıcı adı zaten kayıtlı.");
   const payload = {
     id: crypto.randomUUID(),
     name,
-    role: String(form.get("role") || "").trim()
+    username,
+    passwordHash: await sha256(password),
+    role: els.userRole.value,
+    active: true
   };
-
+  const remoteSaved = await sendToApi("saveUser", payload);
   state.users.push(payload);
   persist(STORAGE_KEYS.users, state.users);
   renderAll();
   els.userForm.reset();
-  showToast("Kullanıcı eklendi.");
+  showToast(remoteSaved ? "Kullanıcı kaydedildi." : "Kullanıcı yerelde kaydedildi.");
+}
+
+function requireAuth() {
+  if (state.currentUser) return true;
+  showLogin();
+  return false;
+}
+
+function requireAdmin() {
+  if (state.currentUser?.role === "admin") return true;
+  showToast("Bu işlem için admin yetkisi gerekiyor.");
+  return false;
+}
+
+function requireProjects() {
+  if (state.projects.length) return true;
+  showToast("Önce proje ekleyin.");
+  setView("projects");
+  return false;
 }
 
 function exportAllJson() {
@@ -597,7 +682,7 @@ function exportAllJson() {
     exportedAt: new Date().toISOString(),
     companyName: state.settings.companyName,
     projects: state.projects,
-    users: state.users,
+    users: state.users.map(({ passwordHash, ...rest }) => rest),
     reports: state.reports,
     puantaj: state.puantaj,
     orders: state.orders
@@ -626,7 +711,6 @@ async function syncFromApi(options = {}) {
     setView("settings");
     return;
   }
-
   try {
     const url = new URL(state.settings.apiBaseUrl);
     url.searchParams.set("resource", "bootstrap");
@@ -634,7 +718,7 @@ async function syncFromApi(options = {}) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
     state.projects = payload.projects || state.projects;
-    state.users = payload.users || state.users;
+    state.users = (payload.users || state.users).map(normalizeUser);
     state.reports = payload.reports || state.reports;
     state.puantaj = payload.puantaj || state.puantaj;
     state.orders = payload.orders || state.orders;
@@ -645,6 +729,14 @@ async function syncFromApi(options = {}) {
     persist(STORAGE_KEYS.orders, state.orders);
     state.apiHealth = "ok";
     setConnectionPill();
+    renderAuthMode();
+    if (state.currentUser) {
+      const freshUser = state.users.find((user) => user.id === state.currentUser.id || user.username === state.currentUser.username);
+      if (freshUser) {
+        state.currentUser = normalizeUser(freshUser);
+        persist(STORAGE_KEYS.session, state.currentUser);
+      }
+    }
     renderAll();
     refreshWorkerProjectOptions();
     if (!silent) showToast("Google Sheets verileri yüklendi.");
@@ -658,7 +750,6 @@ async function syncFromApi(options = {}) {
 
 async function sendToApi(action, payload) {
   if (!state.settings.apiBaseUrl) return false;
-
   try {
     const response = await fetch(state.settings.apiBaseUrl, {
       method: "POST",
@@ -709,7 +800,6 @@ function buildProjectSummaries() {
     const workerCount = projectPuantaj.reduce((sum, entry) => sum + entry.workers.filter((worker) => worker.projectId === project.id && worker.status === "present").length, 0);
     const budget = Number(project.budget || 0);
     const progress = budget > 0 ? Math.min(100, Math.round((totalCost / budget) * 100)) : 0;
-
     return {
       ...project,
       totalCost,
@@ -729,22 +819,25 @@ function projectDurationText(startDate, endDate) {
   const start = new Date(startDate);
   const end = new Date(endDate);
   const diff = Math.max(0, Math.round((end - start) / 86400000));
-  return `${startDate} - ${endDate} · ${diff} gun`;
+  return `${startDate} - ${endDate} · ${diff} gün`;
 }
 
 function totalPresentCount() {
-  return state.puantaj.reduce(
-    (sum, row) => sum + row.workers.filter((worker) => worker.status === "present").length,
-    0
-  );
+  return state.puantaj.reduce((sum, row) => sum + row.workers.filter((worker) => worker.status === "present").length, 0);
 }
 
 function userName(userId) {
-  return state.users.find((user) => user.id === userId)?.name || "Kullanıcı seçilmedi";
+  const user = state.users.find((item) => item.id === userId);
+  return user?.name || user?.ad || user?.username || "Kullanıcı seçilmedi";
 }
 
 function projectName(projectId) {
   return state.projects.find((project) => project.id === projectId)?.name || "Proje seçilmedi";
+}
+
+function roleLabel(role) {
+  const labels = { admin: "Admin", sef: "Şef", satinalma: "Satın Alma", kullanici: "Kullanıcı" };
+  return labels[role] || role || "Kullanıcı";
 }
 
 function kpiCard(label, value, note) {
@@ -758,27 +851,20 @@ function kpiCard(label, value, note) {
 }
 
 function setConnectionPill() {
-  if (!state.settings.apiBaseUrl) {
-    els.connectionPill.textContent = "Yerel Kayıt";
-    return;
-  }
-  if (state.apiHealth === "ok") {
-    els.connectionPill.textContent = "Sheets Canli";
-    return;
-  }
-  if (state.apiHealth === "error") {
-    els.connectionPill.textContent = "Sheets Hatası";
-    return;
-  }
-  els.connectionPill.textContent = "Sheets Bagli";
+  if (!state.settings.apiBaseUrl) return (els.connectionPill.textContent = "Yerel Kayıt");
+  if (state.apiHealth === "ok") return (els.connectionPill.textContent = "Sheets Canlı");
+  if (state.apiHealth === "error") return (els.connectionPill.textContent = "Sheets Hatası");
+  els.connectionPill.textContent = "Sheets Bağlı";
+}
+
+async function sha256(text) {
+  const data = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function loadJson(key, fallback) {
-  try {
-    return JSON.parse(localStorage.getItem(key)) || fallback;
-  } catch {
-    return fallback;
-  }
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
 }
 
 function persist(key, value) {
@@ -818,9 +904,7 @@ function escapeHtml(value) {
 }
 
 function toCsv(rows) {
-  return rows
-    .map((row) => row.map((cell) => `"${String(cell ?? "").replaceAll('"', '""')}"`).join(","))
-    .join("\n");
+  return rows.map((row) => row.map((cell) => `"${String(cell ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
 }
 
 function downloadFile(filename, content, mimeType) {

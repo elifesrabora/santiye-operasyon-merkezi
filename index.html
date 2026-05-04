@@ -11,7 +11,49 @@
   <link rel="stylesheet" href="./assets/styles/main.css">
 </head>
 <body>
-  <div class="app-shell">
+  <div id="login-screen" class="login-screen">
+    <div class="login-box">
+      <div class="brand login-brand">
+        <div class="brand-mark">
+          <img src="./assets/logo-ayazlar.jpg" alt="Ayazlar Yapı logosu">
+        </div>
+        <div>
+          <div class="brand-name">Ayazlar Yapı</div>
+          <div class="brand-sub">Şantiye Operasyon Merkezi</div>
+        </div>
+      </div>
+
+      <div class="login-mode-title" id="login-mode-title">Giriş Yap</div>
+      <p class="login-copy" id="login-copy">Kendi kullanıcı bilgilerinizle oturum açın.</p>
+
+      <form id="login-form" class="form-grid">
+        <div id="first-user-fields" class="form-grid hidden">
+          <label class="field">
+            <span>Ad Soyad</span>
+            <input type="text" id="setup-name" placeholder="İlk admin adı">
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Kullanıcı Adı</span>
+          <input type="text" id="login-username" placeholder="kullanici_adi">
+        </label>
+
+        <label class="field">
+          <span>Şifre</span>
+          <input type="password" id="login-password" placeholder="••••••••">
+        </label>
+
+        <div class="login-error" id="login-error"></div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-block" id="login-submit">Giriş Yap</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="app-shell hidden" id="app-shell">
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark">
@@ -45,8 +87,13 @@
           <p id="page-subtitle">Saha, puantaj ve proje verilerini tek ekranda yönetin.</p>
         </div>
         <div class="topbar-actions">
+          <div class="session-box">
+            <strong id="session-name">—</strong>
+            <span id="session-role">—</span>
+          </div>
           <span class="status-pill" id="connection-pill">Yerel Kayıt</span>
           <button class="btn btn-secondary" type="button" data-view-jump="projects">Proje Ekle</button>
+          <button class="btn btn-secondary" type="button" id="logout-btn">Çıkış Yap</button>
           <button class="btn btn-primary" id="sync-btn">Verileri Yenile</button>
         </div>
       </header>
@@ -154,7 +201,7 @@
               <div class="form-row cols-2">
                 <label class="field">
                   <span>Şef</span>
-                  <select id="puantaj-chief"></select>
+                  <input type="text" id="puantaj-chief-label" readonly placeholder="Oturumdaki kullanıcı">
                 </label>
                 <label class="field">
                   <span>Tarih</span>
@@ -234,7 +281,7 @@
             <div class="form-row cols-3">
               <label class="field">
                 <span>Siparişi Giren</span>
-                <select id="order-by" name="orderedBy"></select>
+                <input type="text" id="order-by-label" readonly placeholder="Oturumdaki kullanıcı">
               </label>
               <label class="field">
                 <span>Durum</span>
@@ -329,8 +376,23 @@
                   <input type="text" id="user-name" name="name" placeholder="Kullanıcı adı">
                 </label>
                 <label class="field">
+                  <span>Kullanıcı Adı</span>
+                  <input type="text" id="user-username" name="username" placeholder="kullanici_adi">
+                </label>
+              </div>
+              <div class="form-row cols-2">
+                <label class="field">
                   <span>Rol</span>
-                  <input type="text" id="user-role" name="role" placeholder="Admin, Şef, Satın Alma...">
+                  <select id="user-role" name="role">
+                    <option value="admin">Admin</option>
+                    <option value="sef">Şef</option>
+                    <option value="satinalma">Satın Alma</option>
+                    <option value="kullanici">Kullanıcı</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Şifre</span>
+                  <input type="password" id="user-password" name="password" placeholder="Kullanıcı şifresi">
                 </label>
               </div>
               <div class="form-actions">
