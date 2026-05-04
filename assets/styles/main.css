@@ -1,18 +1,19 @@
 :root {
-  --bg: #0f1419;
-  --bg-elevated: #171d24;
-  --bg-card: #202833;
-  --bg-input: #293341;
-  --border: #364150;
-  --border-muted: #2a3340;
-  --text: #edf1f5;
-  --text-muted: #93a0b3;
-  --text-dim: #69778b;
-  --accent: #f59e0b;
-  --accent-2: #fbbf24;
+  --bg: #090b14;
+  --bg-elevated: #12172a;
+  --bg-card: #171d33;
+  --bg-input: #1c2440;
+  --border: #313a63;
+  --border-muted: #212949;
+  --text: #f4f6ff;
+  --text-muted: #a2adc9;
+  --text-dim: #707da3;
+  --accent: #312b72;
+  --accent-2: #ed1c24;
+  --accent-3: #5a54a4;
   --success: #10b981;
   --danger: #ef4444;
-  --shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
+  --shadow: 0 18px 50px rgba(2, 5, 16, 0.45);
 }
 
 * {
@@ -27,8 +28,9 @@ html, body {
 body {
   font-family: "Manrope", sans-serif;
   background:
-    radial-gradient(circle at top left, rgba(245, 158, 11, 0.12), transparent 24%),
-    radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.08), transparent 22%),
+    radial-gradient(circle at top left, rgba(49, 43, 114, 0.32), transparent 24%),
+    radial-gradient(circle at 85% 15%, rgba(237, 28, 36, 0.16), transparent 18%),
+    radial-gradient(circle at bottom right, rgba(90, 84, 164, 0.18), transparent 24%),
     var(--bg);
   color: var(--text);
 }
@@ -48,7 +50,9 @@ button, input, select, textarea {
   top: 0;
   height: 100vh;
   padding: 24px 18px;
-  background: rgba(11, 16, 22, 0.9);
+  background:
+    linear-gradient(180deg, rgba(19, 24, 44, 0.96), rgba(10, 12, 24, 0.98)),
+    rgba(11, 16, 22, 0.9);
   backdrop-filter: blur(18px);
   border-right: 1px solid var(--border-muted);
 }
@@ -61,20 +65,30 @@ button, input, select, textarea {
 }
 
 .brand-mark {
-  width: 48px;
-  height: 48px;
+  width: 84px;
+  height: 84px;
   display: grid;
   place-items: center;
+  padding: 8px;
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(225, 229, 246, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(237, 28, 36, 0.18);
+}
+
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   border-radius: 14px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #111827;
-  font-weight: 800;
-  letter-spacing: 0.06em;
 }
 
 .brand-name {
   font-weight: 800;
-  font-size: 15px;
+  font-size: 22px;
+  letter-spacing: -0.03em;
 }
 
 .brand-sub, .eyebrow, .status-pill, .section-title {
@@ -83,8 +97,10 @@ button, input, select, textarea {
 
 .brand-sub {
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: 12px;
   margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
 
 .nav {
@@ -106,16 +122,17 @@ button, input, select, textarea {
 
 .nav-item:hover,
 .nav-item.active {
-  background: var(--bg-card);
-  border-color: var(--border);
+  background: linear-gradient(135deg, rgba(49, 43, 114, 0.5), rgba(23, 29, 51, 0.98));
+  border-color: rgba(237, 28, 36, 0.3);
   color: var(--text);
+  box-shadow: inset 3px 0 0 var(--accent-2);
 }
 
 .sidebar-note {
   margin-top: 24px;
   padding: 16px;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.18);
+  background: linear-gradient(135deg, rgba(49, 43, 114, 0.24), rgba(237, 28, 36, 0.08));
+  border: 1px solid rgba(237, 28, 36, 0.16);
   border-radius: 14px;
   color: var(--text-muted);
   line-height: 1.6;
@@ -157,8 +174,8 @@ button, input, select, textarea {
   padding: 10px 12px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(16, 185, 129, 0.08);
-  color: #b6f3dd;
+  background: linear-gradient(135deg, rgba(49, 43, 114, 0.44), rgba(237, 28, 36, 0.16));
+  color: #f7d2d5;
   font-size: 12px;
 }
 
@@ -182,7 +199,7 @@ button, input, select, textarea {
 .record-card,
 .worker-card,
 .info-card {
-  background: rgba(24, 31, 40, 0.94);
+  background: linear-gradient(180deg, rgba(25, 32, 57, 0.96), rgba(16, 20, 37, 0.96));
   border: 1px solid var(--border-muted);
   border-radius: 20px;
   box-shadow: var(--shadow);
@@ -237,7 +254,7 @@ button, input, select, textarea {
 }
 
 .eyebrow {
-  color: var(--accent-2);
+  color: #ff7177;
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -257,7 +274,7 @@ button, input, select, textarea {
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: 16px;
-  background: rgba(41, 51, 65, 0.45);
+  background: linear-gradient(180deg, rgba(26, 34, 61, 0.88), rgba(18, 24, 43, 0.88));
 }
 
 .project-meta,
@@ -278,7 +295,7 @@ button, input, select, textarea {
 .progress > span {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  background: linear-gradient(90deg, var(--accent-3), var(--accent-2));
 }
 
 .form-grid {
@@ -321,14 +338,14 @@ input, select, textarea {
   padding: 13px 14px;
   border-radius: 14px;
   border: 1px solid var(--border);
-  background: var(--bg-input);
+  background: linear-gradient(180deg, rgba(28, 36, 64, 0.92), rgba(21, 28, 50, 0.92));
   color: var(--text);
   outline: none;
 }
 
 input:focus, select:focus, textarea:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 3px rgba(237, 28, 36, 0.16);
 }
 
 textarea {
@@ -353,17 +370,18 @@ textarea {
 
 .btn:hover,
 .icon-btn:hover {
-  border-color: var(--accent);
+  border-color: var(--accent-2);
 }
 
 .btn-primary {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #121826;
+  color: #ffffff;
   border-color: transparent;
+  box-shadow: 0 10px 24px rgba(237, 28, 36, 0.18);
 }
 
 .btn-secondary {
-  background: transparent;
+  background: rgba(18, 24, 43, 0.72);
 }
 
 .worker-card {
@@ -384,8 +402,8 @@ textarea {
 .icon-btn {
   padding: 0 16px;
   border-radius: 12px;
-  background: rgba(239, 68, 68, 0.08);
-  color: #ffb8b8;
+  background: rgba(237, 28, 36, 0.08);
+  color: #ffc6c8;
 }
 
 .status-btn {
@@ -398,13 +416,13 @@ textarea {
 
 .status-btn.active,
 .status-btn[data-status="present"].active {
-  background: rgba(16, 185, 129, 0.12);
-  color: #c0ffe8;
+  background: rgba(49, 43, 114, 0.48);
+  color: #e1ddff;
 }
 
 .status-btn[data-status="absent"].active {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ffc0c0;
+  background: rgba(237, 28, 36, 0.16);
+  color: #ffd1d3;
 }
 
 .records-grid {
@@ -424,8 +442,8 @@ textarea {
 .tag {
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(245, 158, 11, 0.12);
-  color: #ffd898;
+  background: rgba(237, 28, 36, 0.12);
+  color: #ffd1d3;
   font-size: 12px;
 }
 
