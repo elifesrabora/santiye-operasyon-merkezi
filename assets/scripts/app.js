@@ -12,18 +12,21 @@ const DEFAULT_PROJECTS = [
 ];
 
 const DEFAULT_SETTINGS = {
-  apiBaseUrl: "",
+  apiBaseUrl: "https://script.google.com/macros/s/AKfycbxsGhQNPJLG2UpWBDr6iUntH_XPT2iSUukKvf2gttwTpwq2o-tYzloTja8HGEwLLLU5Cg/exec",
   companyName: "Ayazlar Yapi",
   sheetNote: "Ana Google Sheet: https://docs.google.com/spreadsheets/d/17WZGVKxZ2cfSxEGkLPRQazHNFU4iYBAqMDYy99ZfErM/edit?usp=sharing"
 };
 
 const state = {
   currentView: "dashboard",
+  apiHealth: "unknown",
   settings: loadJson(STORAGE_KEYS.settings, DEFAULT_SETTINGS),
   projects: loadJson(STORAGE_KEYS.projects, DEFAULT_PROJECTS),
   reports: loadJson(STORAGE_KEYS.reports, []),
   puantaj: loadJson(STORAGE_KEYS.puantaj, [])
 };
+
+const AUTO_SYNC_MS = 60000;
 
 const viewMeta = {
   dashboard: ["Dashboard", "Saha, puantaj ve proje verilerini tek ekranda yonetin."],
@@ -93,6 +96,13 @@ function boot() {
   [els.recordTypeFilter, els.recordProjectFilter, els.recordSearch].forEach((el) =>
     el.addEventListener("input", renderRecords)
   );
+
+  if (state.settings.apiBaseUrl) {
+    syncFromApi({ silent: true });
+    window.setInterval(() => {
+      syncFromApi({ silent: true });
+    }, AUTO_SYNC_MS);
+  }
 }
 
 function wireNavigation() {
@@ -386,14 +396,16 @@ function onSaveSettings(event) {
     companyName: els.settingsCompanyName.value.trim(),
     sheetNote: els.settingsSheetNote.value.trim()
   };
+  state.apiHealth = "unknown";
   persist(STORAGE_KEYS.settings, state.settings);
   setConnectionPill();
   showToast("Ayarlar kaydedildi.");
 }
 
-async function syncFromApi() {
+async function syncFromApi(options = {}) {
+  const { silent = false } = options;
   if (!state.settings.apiBaseUrl) {
-    showToast("Once Apps Script URL bilgisini ayarlara girin.");
+    if (!silent) showToast("Once Apps Script URL bilgisini ayarlara girin.");
     setView("settings");
     return;
   }
@@ -410,13 +422,17 @@ async function syncFromApi() {
     persist(STORAGE_KEYS.projects, state.projects);
     persist(STORAGE_KEYS.reports, state.reports);
     persist(STORAGE_KEYS.puantaj, state.puantaj);
+    state.apiHealth = "ok";
+    setConnectionPill();
     renderProjectOptions();
     renderDashboard();
     renderRecords();
-    showToast("Google Sheets verileri yuklendi.");
+    if (!silent) showToast("Google Sheets verileri yuklendi.");
   } catch (error) {
     console.error(error);
-    showToast("Veri cekilirken hata olustu.");
+    state.apiHealth = "error";
+    setConnectionPill();
+    if (!silent) showToast("Veri cekilirken hata olustu.");
   }
 }
 
@@ -430,9 +446,13 @@ async function sendToApi(action, payload) {
       body: JSON.stringify({ action, payload })
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    state.apiHealth = "ok";
+    setConnectionPill();
     return true;
   } catch (error) {
     console.error(error);
+    state.apiHealth = "error";
+    setConnectionPill();
     showToast("Sheets baglantisina yazilamadi, veri yerelde tutuldu.");
     return false;
   }
@@ -477,7 +497,22 @@ function seedDemoData() {
 }
 
 function setConnectionPill() {
-  els.connectionPill.textContent = state.settings.apiBaseUrl ? "Sheets Hazir" : "Demo Modu";
+  if (!state.settings.apiBaseUrl) {
+    els.connectionPill.textContent = "Demo Modu";
+    return;
+  }
+
+  if (state.apiHealth === "ok") {
+    els.connectionPill.textContent = "Sheets Canli";
+    return;
+  }
+
+  if (state.apiHealth === "error") {
+    els.connectionPill.textContent = "Sheets Hatasi";
+    return;
+  }
+
+  els.connectionPill.textContent = "Sheets Bagli";
 }
 
 function loadJson(key, fallback) {
