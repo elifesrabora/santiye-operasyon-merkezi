@@ -14,6 +14,8 @@ Bu dosya icinde su sekmeleri acin:
 4. `Puantaj`
 5. `Workers`
 6. `Orders`
+7. `Tasks`
+8. `Documents`
 
 ## Kolon Yapilari
 
@@ -81,6 +83,29 @@ Bu dosya icinde su sekmeleri acin:
 13. `status`
 14. `note`
 15. `createdAt`
+
+### `Tasks`
+
+1. `id`
+2. `projectId`
+3. `title`
+4. `assignedToId`
+5. `dueDate`
+6. `status`
+7. `note`
+8. `createdById`
+9. `createdAt`
+
+### `Documents`
+
+1. `id`
+2. `projectId`
+3. `title`
+4. `type`
+5. `url`
+6. `note`
+7. `createdById`
+8. `createdAt`
 
 ## Apps Script Kurulumu
 

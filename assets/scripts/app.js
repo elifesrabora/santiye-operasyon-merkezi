@@ -5,6 +5,8 @@ const STORAGE_KEYS = {
   projects: "som_projects",
   users: "som_users",
   orders: "som_orders",
+  tasks: "som_tasks",
+  documents: "som_documents",
   session: "som_session"
 };
 
@@ -25,7 +27,9 @@ const state = {
   users: loadJson(STORAGE_KEYS.users, []),
   reports: loadJson(STORAGE_KEYS.reports, []),
   puantaj: loadJson(STORAGE_KEYS.puantaj, []),
-  orders: loadJson(STORAGE_KEYS.orders, [])
+  orders: loadJson(STORAGE_KEYS.orders, []),
+  tasks: loadJson(STORAGE_KEYS.tasks, []),
+  documents: loadJson(STORAGE_KEYS.documents, [])
 };
 
 const AUTO_SYNC_MS = 60000;
@@ -36,6 +40,8 @@ const viewMeta = {
   puantaj: ["Puantaj", "Oturum açan kullanıcının adıyla günlük personel kaydı tutun."],
   orders: ["Siparişler", "Beton, demir ve diğer siparişlerin fiyat, kaynak ve giren kişi takibini yapın."],
   projects: ["Şantiyeler", "Projeleri ve kullanıcıları yönetin, proje bazlı toplu özetleri görün."],
+  calendar: ["Takvim", "Şantiye görevlerini tarihe, projeye ve kişiye göre planlayın."],
+  documents: ["Evraklar", "Şantiyelere ait evrak linklerini ve notlarını tek merkezde tutun."],
   records: ["Kayıtlar", "Saha raporu, puantaj ve sipariş geçmişini bir arada inceleyin."],
   settings: ["Ayarlar", "GitHub Pages ve Google Sheets bağlantısını yönetin."]
 };
@@ -78,6 +84,7 @@ const els = {
   exportPuantajBtn: document.getElementById("export-puantaj-btn"),
   puantajPdfBtn: document.getElementById("puantaj-pdf-btn"),
   orderForm: document.getElementById("order-form"),
+  orderId: document.getElementById("order-id"),
   orderProject: document.getElementById("order-project"),
   orderDate: document.getElementById("order-date"),
   orderMaterial: document.getElementById("order-material"),
@@ -88,6 +95,8 @@ const els = {
   orderByLabel: document.getElementById("order-by-label"),
   orderRecords: document.getElementById("order-records"),
   ordersPdfBtn: document.getElementById("orders-pdf-btn"),
+  orderSubmitBtn: document.getElementById("order-submit-btn"),
+  orderCancelEditBtn: document.getElementById("order-cancel-edit-btn"),
   projectForm: document.getElementById("project-form"),
   userForm: document.getElementById("user-form"),
   userName: document.getElementById("user-name"),
@@ -103,11 +112,23 @@ const els = {
   projectDetailPdfBtn: document.getElementById("project-detail-pdf-btn"),
   projectDetailKpis: document.getElementById("project-detail-kpis"),
   projectDetailBrief: document.getElementById("project-detail-brief"),
+  projectProgressStrip: document.getElementById("project-progress-strip"),
   projectCostChart: document.getElementById("project-cost-chart"),
   projectActivityChart: document.getElementById("project-activity-chart"),
   projectDetailReports: document.getElementById("project-detail-reports"),
   projectDetailOrders: document.getElementById("project-detail-orders"),
   projectDetailPuantaj: document.getElementById("project-detail-puantaj"),
+  projectDetailDocuments: document.getElementById("project-detail-documents"),
+  projectDetailTasks: document.getElementById("project-detail-tasks"),
+  taskForm: document.getElementById("task-form"),
+  taskProject: document.getElementById("task-project"),
+  taskAssignee: document.getElementById("task-assignee"),
+  taskRecords: document.getElementById("task-records"),
+  calendarGrid: document.getElementById("calendar-grid"),
+  notificationBtn: document.getElementById("notification-btn"),
+  documentForm: document.getElementById("document-form"),
+  documentProject: document.getElementById("document-project"),
+  documentRecords: document.getElementById("document-records"),
   recordTypeFilter: document.getElementById("record-type-filter"),
   recordProjectFilter: document.getElementById("record-project-filter"),
   recordSearch: document.getElementById("record-search"),
@@ -164,8 +185,13 @@ function bindAppEvents() {
   els.puantajPdfBtn.addEventListener("click", exportLatestPuantajPdf);
   els.ordersPdfBtn.addEventListener("click", exportLatestOrderPdf);
   els.orderForm.addEventListener("submit", onSaveOrder);
+  els.orderForm.addEventListener("reset", () => window.setTimeout(clearOrderEditState, 0));
+  els.orderCancelEditBtn.addEventListener("click", resetOrderForm);
   els.projectForm.addEventListener("submit", onSaveProject);
   els.userForm.addEventListener("submit", onSaveUser);
+  els.taskForm.addEventListener("submit", onSaveTask);
+  els.documentForm.addEventListener("submit", onSaveDocument);
+  els.notificationBtn.addEventListener("click", requestNotifications);
   els.projectFilterBtn.addEventListener("click", renderProjectDetail);
   els.projectDetailPdfBtn.addEventListener("click", exportProjectDetailPdf);
   els.exportRecordsBtn.addEventListener("click", exportAllJson);
@@ -349,6 +375,8 @@ function renderAll() {
   renderDashboard();
   renderOrders();
   renderProjectManagement();
+  renderCalendar();
+  renderDocuments();
   renderRecords();
   renderProjectDetail();
   updateSessionUi();
@@ -363,11 +391,16 @@ function renderProjectOptions() {
     .concat(state.projects.map((project) => `<option value="${project.id}">${escapeHtml(project.name)}</option>`))
     .join("");
 
-  [els.reportProject, els.orderProject].forEach((select) => {
+  [els.reportProject, els.orderProject, els.taskProject, els.documentProject].forEach((select) => {
     select.innerHTML = projectOptions;
     select.disabled = state.projects.length === 0;
   });
   els.recordProjectFilter.innerHTML = filterOptions;
+
+  els.taskAssignee.innerHTML = state.users.length
+    ? state.users.map((user) => `<option value="${user.id}">${escapeHtml(user.name || user.username)}</option>`).join("")
+    : '<option value="">Önce kullanıcı ekleyin</option>';
+  els.taskAssignee.disabled = state.users.length === 0;
 }
 
 function renderDashboard() {
@@ -550,6 +583,7 @@ function renderOrderCard(item) {
       <div class="record-meta">Kaynak: ${escapeHtml(item.priceSource || "-")} · Durum: ${escapeHtml(item.status || "-")}</div>
       ${item.note ? `<p>${escapeHtml(item.note)}</p>` : ""}
       <div class="record-footer">
+        <button class="btn btn-secondary" type="button" onclick="window.__somActions.editOrder('${item.id}')">Düzenle</button>
         <button class="btn btn-secondary" type="button" onclick="window.__somPdf.exportOrder('${item.id}')">PDF Al</button>
       </div>
     </article>
@@ -663,8 +697,9 @@ async function onSaveOrder(event) {
   const form = new FormData(els.orderForm);
   const quantity = Number(form.get("quantity") || 0);
   const unitPrice = Number(form.get("unitPrice") || 0);
+  const existingId = String(form.get("id") || "");
   const payload = {
-    id: crypto.randomUUID(),
+    id: existingId || crypto.randomUUID(),
     projectId: form.get("projectId"),
     date: form.get("date"),
     material: form.get("material"),
@@ -678,17 +713,54 @@ async function onSaveOrder(event) {
     orderedById: state.currentUser.id,
     status: form.get("status"),
     note: form.get("note"),
-    createdAt: new Date().toISOString()
+    createdAt: existingId ? (state.orders.find((item) => item.id === existingId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+    updatedAt: existingId ? new Date().toISOString() : ""
   };
-  const remoteSaved = await sendToApi("saveOrder", payload);
-  state.orders.push(payload);
+  const remoteSaved = await sendToApi(existingId ? "updateOrder" : "saveOrder", payload);
+  if (existingId) {
+    state.orders = state.orders.map((item) => item.id === existingId ? payload : item);
+  } else {
+    state.orders.push(payload);
+  }
   persist(STORAGE_KEYS.orders, state.orders);
   renderAll();
+  resetOrderForm();
+  showToast(remoteSaved ? "Sipariş kaydedildi." : "Sipariş yerelde kaydedildi.");
+}
+
+function editOrder(orderId) {
+  const order = state.orders.find((item) => item.id === orderId);
+  if (!order) return;
+  setView("orders");
+  els.orderId.value = order.id;
+  els.orderProject.value = order.projectId;
+  els.orderDate.value = order.date || todayStr();
+  els.orderMaterial.value = order.material || "Beton";
+  document.getElementById("order-spec").value = order.spec || "";
+  els.orderQty.value = order.quantity || "";
+  els.orderUnit.value = order.unit || "";
+  document.getElementById("order-supplier").value = order.supplier || "";
+  els.orderUnitPrice.value = order.unitPrice || "";
+  document.getElementById("order-price-source").value = order.priceSource || "";
+  document.getElementById("order-status").value = order.status || "Beklemede";
+  document.getElementById("order-note").value = order.note || "";
+  els.orderSubmitBtn.textContent = "Siparişi Güncelle";
+  els.orderCancelEditBtn.classList.remove("hidden");
+  updateOrderTotal();
+}
+
+function resetOrderForm() {
   els.orderForm.reset();
+  clearOrderEditState();
+}
+
+function clearOrderEditState() {
+  els.orderId.value = "";
   els.orderDate.value = todayStr();
   syncOrderUnit();
   updateOrderTotal();
-  showToast(remoteSaved ? "Sipariş kaydedildi." : "Sipariş yerelde kaydedildi.");
+  els.orderSubmitBtn.textContent = "Siparişi Kaydet";
+  els.orderCancelEditBtn.classList.add("hidden");
 }
 
 async function onSaveProject(event) {
@@ -763,11 +835,14 @@ function renderProjectDetail() {
     els.projectDetailTitle.textContent = "Bir şantiye seçin";
     els.projectDetailKpis.innerHTML = "";
     els.projectDetailBrief.textContent = "Önce bir proje ekleyin ya da listeden bir şantiye seçin.";
+    els.projectProgressStrip.innerHTML = "";
     els.projectCostChart.innerHTML = emptyState("Önce bir proje ekleyin.");
     els.projectActivityChart.innerHTML = "";
     els.projectDetailReports.innerHTML = "";
     els.projectDetailOrders.innerHTML = "";
     els.projectDetailPuantaj.innerHTML = "";
+    els.projectDetailDocuments.innerHTML = "";
+    els.projectDetailTasks.innerHTML = "";
     return;
   }
 
@@ -782,6 +857,7 @@ function renderProjectDetail() {
     kpiCard("Bütçe Kullanımı", `${detail.budgetUsage}%`, `${formatCurrency(detail.budget)} bütçe`)
   ].join("");
   els.projectDetailBrief.textContent = buildProjectBrief(project, detail);
+  els.projectProgressStrip.innerHTML = renderProjectProgress(project, detail);
 
   els.projectCostChart.innerHTML = renderChartRows([
     { label: "Beton", value: detail.concreteCost, total: detail.totalCost },
@@ -804,6 +880,12 @@ function renderProjectDetail() {
   els.projectDetailPuantaj.innerHTML = detail.puantaj.length
     ? detail.puantaj.map(renderPuantajRecord).join("")
     : emptyState("Bu projeye ait puantaj yok.");
+  els.projectDetailDocuments.innerHTML = detail.documents.length
+    ? detail.documents.map(renderDocumentCard).join("")
+    : emptyState("Bu projeye ait evrak yok.");
+  els.projectDetailTasks.innerHTML = detail.tasks.length
+    ? detail.tasks.map(renderTaskCard).join("")
+    : emptyState("Bu projeye ait görev yok.");
 }
 
 function getProjectDetailData(projectId) {
@@ -813,6 +895,8 @@ function getProjectDetailData(projectId) {
   const reports = state.reports.filter((item) => item.projectId === projectId && inRange(item.date)).sort((a, b) => b.date.localeCompare(a.date));
   const orders = state.orders.filter((item) => item.projectId === projectId && inRange(item.date)).sort((a, b) => b.date.localeCompare(a.date));
   const puantaj = state.puantaj.filter((entry) => inRange(entry.date) && entry.workers.some((worker) => worker.projectId === projectId)).sort((a, b) => b.date.localeCompare(a.date));
+  const documents = state.documents.filter((item) => item.projectId === projectId).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  const tasks = state.tasks.filter((item) => item.projectId === projectId && inRange(item.dueDate)).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const concreteCost = orders.filter((item) => item.material === "Beton").reduce((sum, item) => sum + Number(item.total || 0), 0);
   const rebarCost = orders.filter((item) => item.material === "Demir").reduce((sum, item) => sum + Number(item.total || 0), 0);
   const totalCost = orders.reduce((sum, item) => sum + Number(item.total || 0), 0);
@@ -822,6 +906,8 @@ function getProjectDetailData(projectId) {
     reports,
     orders,
     puantaj,
+    documents,
+    tasks,
     concreteCost,
     rebarCost,
     totalCost,
@@ -831,7 +917,7 @@ function getProjectDetailData(projectId) {
     latestReportDate: reports[0]?.date || "",
     latestOrderDate: orders[0]?.date || "",
     latestPuantajDate: puantaj[0]?.date || "",
-    activityTotal: reports.length + orders.length + puantaj.length
+    activityTotal: reports.length + orders.length + puantaj.length + documents.length + tasks.length
   };
 }
 
@@ -865,6 +951,178 @@ function renderChartRows(rows) {
   }).join("");
 }
 
+
+function renderProjectProgress(project, detail) {
+  const today = todayStr();
+  const start = project?.startDate || "";
+  const end = project?.endDate || "";
+  const elapsedPercent = projectDateProgress(start, end, today);
+  const budgetPercent = detail.budgetUsage || 0;
+  const openTasks = detail.tasks.filter((task) => task.status !== "Tamamlandı").length;
+  return `
+    <div class="progress-metric">
+      <span>Takvim İlerlemesi</span>
+      <strong>%${elapsedPercent}</strong>
+      <div class="progress"><span style="width:${elapsedPercent}%"></span></div>
+      <small>${escapeHtml(start || "Başlangıç yok")} - ${escapeHtml(end || "Bitiş yok")}</small>
+    </div>
+    <div class="progress-metric">
+      <span>Bütçe Kullanımı</span>
+      <strong>%${budgetPercent}</strong>
+      <div class="progress"><span style="width:${budgetPercent}%"></span></div>
+      <small>${formatCurrency(detail.totalCost)} / ${formatCurrency(detail.budget)}</small>
+    </div>
+    <div class="progress-metric">
+      <span>Açık Görev</span>
+      <strong>${openTasks}</strong>
+      <div class="progress"><span style="width:${Math.min(100, openTasks * 20)}%"></span></div>
+      <small>${detail.documents.length} evrak, ${detail.reports.length} rapor</small>
+    </div>
+  `;
+}
+
+function projectDateProgress(startDate, endDate, currentDate) {
+  if (!startDate || !endDate) return 0;
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const current = new Date(currentDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return 0;
+  return Math.max(0, Math.min(100, Math.round(((current - start) / (end - start)) * 100)));
+}
+
+async function onSaveTask(event) {
+  event.preventDefault();
+  if (!requireAuth() || !requireProjects()) return;
+  const form = new FormData(els.taskForm);
+  const title = String(form.get("title") || "").trim();
+  if (!title) return showToast("Görev başlığı gerekli.");
+  const payload = {
+    id: String(form.get("id") || "") || crypto.randomUUID(),
+    projectId: form.get("projectId"),
+    title,
+    assignedToId: form.get("assignedToId"),
+    dueDate: form.get("dueDate") || todayStr(),
+    status: form.get("status") || "Planlandı",
+    note: form.get("note") || "",
+    createdById: state.currentUser.id,
+    createdAt: new Date().toISOString()
+  };
+  const remoteSaved = await sendToApi("saveTask", payload);
+  state.tasks.push(payload);
+  persist(STORAGE_KEYS.tasks, state.tasks);
+  renderAll();
+  els.taskForm.reset();
+  showToast(remoteSaved ? "Görev kaydedildi." : "Görev yerelde kaydedildi.");
+}
+
+function renderCalendar() {
+  if (!els.calendarGrid) return;
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month + 1, 0);
+  const blanks = (first.getDay() + 6) % 7;
+  const cells = [];
+  ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"].forEach((day) => {
+    cells.push(`<div class="calendar-head">${day}</div>`);
+  });
+  for (let i = 0; i < blanks; i += 1) cells.push('<div class="calendar-cell muted"></div>');
+  for (let day = 1; day <= last.getDate(); day += 1) {
+    const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const dayTasks = state.tasks.filter((task) => task.dueDate === date);
+    cells.push(`
+      <div class="calendar-cell ${date === todayStr() ? "today" : ""}">
+        <strong>${day}</strong>
+        ${dayTasks.slice(0, 3).map((task) => `<span>${escapeHtml(task.title)}</span>`).join("")}
+      </div>
+    `);
+  }
+  els.calendarGrid.innerHTML = cells.join("");
+  els.taskRecords.innerHTML = state.tasks.length
+    ? state.tasks.slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate)).map(renderTaskCard).join("")
+    : emptyState("Henüz görev yok.");
+  notifyDueTasks();
+}
+
+function renderTaskCard(task) {
+  return `
+    <article class="record-card">
+      <div class="record-title">
+        <strong>${escapeHtml(task.title)}</strong>
+        <span class="tag">${escapeHtml(task.status || "Planlandı")}</span>
+      </div>
+      <div class="record-meta">${escapeHtml(projectName(task.projectId))} · ${escapeHtml(task.dueDate || "-")} · ${escapeHtml(userName(task.assignedToId))}</div>
+      <div class="record-meta">${escapeHtml(task.note || "-")}</div>
+    </article>
+  `;
+}
+
+async function onSaveDocument(event) {
+  event.preventDefault();
+  if (!requireAuth() || !requireProjects()) return;
+  const form = new FormData(els.documentForm);
+  const title = String(form.get("title") || "").trim();
+  if (!title) return showToast("Evrak adı gerekli.");
+  const payload = {
+    id: crypto.randomUUID(),
+    projectId: form.get("projectId"),
+    title,
+    type: form.get("type") || "",
+    url: form.get("url") || "",
+    note: form.get("note") || "",
+    createdById: state.currentUser.id,
+    createdAt: new Date().toISOString()
+  };
+  const remoteSaved = await sendToApi("saveDocument", payload);
+  state.documents.push(payload);
+  persist(STORAGE_KEYS.documents, state.documents);
+  renderAll();
+  els.documentForm.reset();
+  showToast(remoteSaved ? "Evrak kaydedildi." : "Evrak yerelde kaydedildi.");
+}
+
+function renderDocuments() {
+  if (!els.documentRecords) return;
+  els.documentRecords.innerHTML = state.documents.length
+    ? state.documents.slice().sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")).map(renderDocumentCard).join("")
+    : emptyState("Henüz evrak kaydı yok.");
+}
+
+function renderDocumentCard(item) {
+  const link = item.url ? `<a class="btn btn-secondary" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">Aç</a>` : "";
+  return `
+    <article class="record-card">
+      <div class="record-title">
+        <strong>${escapeHtml(item.title)}</strong>
+        <span class="tag">${escapeHtml(item.type || "Evrak")}</span>
+      </div>
+      <div class="record-meta">${escapeHtml(projectName(item.projectId))} · ${escapeHtml(formatDateTime(item.createdAt))}</div>
+      <div class="record-meta">${escapeHtml(item.note || "-")}</div>
+      <div class="record-footer">${link}</div>
+    </article>
+  `;
+}
+
+async function requestNotifications() {
+  if (!("Notification" in window)) return showToast("Bu tarayıcı bildirim desteklemiyor.");
+  const permission = await Notification.requestPermission();
+  showToast(permission === "granted" ? "Bildirimler açıldı." : "Bildirim izni verilmedi.");
+  notifyDueTasks(true);
+}
+
+function notifyDueTasks(force = false) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const dueTasks = state.tasks.filter((task) => task.status !== "Tamamlandı" && task.dueDate <= todayStr());
+  if (!dueTasks.length) return;
+  const key = `som_notified_${todayStr()}`;
+  if (!force && localStorage.getItem(key)) return;
+  new Notification("Şantiye görev hatırlatması", {
+    body: `${dueTasks.length} açık görev bugün veya geçmiş tarihte bekliyor.`
+  });
+  localStorage.setItem(key, "1");
+}
+
 function exportAllJson() {
   const payload = {
     exportedAt: new Date().toISOString(),
@@ -873,7 +1131,9 @@ function exportAllJson() {
     users: state.users.map(({ passwordHash, ...rest }) => rest),
     reports: state.reports,
     puantaj: state.puantaj,
-    orders: state.orders
+    orders: state.orders,
+    tasks: state.tasks,
+    documents: state.documents
   };
   downloadFile("santiye-operasyon-merkezi.json", JSON.stringify(payload, null, 2), "application/json");
   showToast("Tüm kayıtlar JSON olarak indirildi.");
@@ -920,11 +1180,15 @@ async function syncFromApi(options = {}) {
     state.reports = payload.reports || state.reports;
     state.puantaj = payload.puantaj || state.puantaj;
     state.orders = payload.orders || state.orders;
+    state.tasks = payload.tasks || state.tasks;
+    state.documents = payload.documents || state.documents;
     persist(STORAGE_KEYS.projects, state.projects);
     persist(STORAGE_KEYS.users, state.users);
     persist(STORAGE_KEYS.reports, state.reports);
     persist(STORAGE_KEYS.puantaj, state.puantaj);
     persist(STORAGE_KEYS.orders, state.orders);
+    persist(STORAGE_KEYS.tasks, state.tasks);
+    persist(STORAGE_KEYS.documents, state.documents);
     state.apiHealth = "ok";
     setConnectionPill();
     renderAuthMode();
@@ -1359,6 +1623,10 @@ window.__somPdf = {
   exportReport: exportReportPdf,
   exportPuantaj: exportPuantajPdf,
   exportOrder: exportOrderPdf
+};
+
+window.__somActions = {
+  editOrder
 };
 
 function kpiCard(label, value, note) {

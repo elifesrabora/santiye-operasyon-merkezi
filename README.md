@@ -7,6 +7,8 @@ Github Pages uzerinde yayinlanmak ve Google Sheets ile beslenmek uzere hazirlana
 - Dashboard
 - Gunluk saha raporu girisi
 - Puantaj girisi
+- Takvim ve gorev atama
+- Santiye evrak linkleri
 - Kayit listeleme ve filtreleme
 - JSON ve CSV disa aktarim
 - Google Apps Script uzerinden Google Sheets baglantisina hazir ayarlar
@@ -42,7 +44,9 @@ Uygulama dogrudan `.xlsx` dosyasina yazmak yerine `Google Sheets + Apps Script W
     "users": [],
     "reports": [],
     "puantaj": [],
-    "orders": []
+    "orders": [],
+    "tasks": [],
+    "documents": []
   }
   ```
 
@@ -94,6 +98,8 @@ Uygulama dogrudan `.xlsx` dosyasina yazmak yerine `Google Sheets + Apps Script W
 - `Puantaj`
 - `Workers`
 - `Orders`
+- `Tasks`
+- `Documents`
 
 ## Sonraki Adimlar
 

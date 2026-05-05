@@ -545,6 +545,19 @@ textarea {
   gap: 12px;
 }
 
+
+.project-progress-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.progress-metric { border: 1px solid var(--border); border-radius: 14px; padding: 14px; background: rgba(255, 255, 255, 0.04); display: grid; gap: 8px; }
+.progress-metric span, .progress-metric small { color: var(--text-muted); }
+.progress-metric strong { font-size: 24px; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.calendar-head, .calendar-cell { border: 1px solid var(--border); border-radius: 12px; min-height: 70px; padding: 10px; }
+.calendar-head { min-height: auto; color: var(--text-muted); text-align: center; font-weight: 800; }
+.calendar-cell { display: grid; align-content: start; gap: 6px; background: rgba(255, 255, 255, 0.035); }
+.calendar-cell.today { border-color: var(--accent-2); }
+.calendar-cell.muted { opacity: 0.35; }
+.calendar-cell span { display: block; border-radius: 999px; padding: 3px 7px; background: rgba(237, 28, 36, 0.18); color: var(--text); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .chart-row {
   display: grid;
   gap: 6px;
@@ -613,6 +626,11 @@ code {
   .kpi-grid,
   .panel-grid.two-up,
   .records-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .project-progress-strip,
+  .calendar-grid {
     grid-template-columns: 1fr;
   }
 }

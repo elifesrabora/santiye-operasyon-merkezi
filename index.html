@@ -73,6 +73,8 @@
         <button class="nav-item" data-view="puantaj">Puantaj</button>
         <button class="nav-item" data-view="orders">Siparişler</button>
         <button class="nav-item" data-view="projects">Şantiyeler</button>
+        <button class="nav-item" data-view="calendar">Takvim</button>
+        <button class="nav-item" data-view="documents">Evraklar</button>
         <button class="nav-item" data-view="records">Kayıtlar</button>
         <button class="nav-item" data-view="settings">Ayarlar</button>
       </nav>
@@ -241,6 +243,7 @@
           </div>
 
           <form id="order-form" class="panel-body form-grid">
+            <input type="hidden" id="order-id" name="id">
             <div class="form-row cols-3">
               <label class="field">
                 <span>Proje</span>
@@ -315,7 +318,8 @@
 
             <div class="form-actions">
               <button type="reset" class="btn btn-secondary">Temizle</button>
-              <button type="submit" class="btn btn-primary">Siparişi Kaydet</button>
+              <button type="button" class="btn btn-secondary hidden" id="order-cancel-edit-btn">Düzenlemeyi İptal Et</button>
+              <button type="submit" class="btn btn-primary" id="order-submit-btn">Siparişi Kaydet</button>
             </div>
           </form>
         </div>
@@ -459,6 +463,7 @@
             <div class="info-card" id="project-detail-brief">
               Seçilen proje için özet bilgi burada görünür.
             </div>
+            <div class="project-progress-strip" id="project-progress-strip"></div>
             <div class="panel-grid two-up">
               <div class="panel chart-panel">
                 <div class="panel-header">
@@ -497,8 +502,27 @@
               <h3 class="section-title">Puantaj</h3>
               <div class="records-list" id="project-detail-puantaj"></div>
             </section>
+            <div class="panel-grid two-up">
+              <section><h3 class="section-title">Evraklar</h3><div class="records-list" id="project-detail-documents"></div></section>
+              <section><h3 class="section-title">Yaklaşan Görevler</h3><div class="records-list" id="project-detail-tasks"></div></section>
+            </div>
           </div>
         </div>
+      </section>
+
+      <section class="view" id="view-calendar">
+        <div class="panel-grid two-up">
+          <div class="panel"><div class="panel-header"><div><div class="eyebrow">Planlama</div><h2>Takvim / Görev Ata</h2></div><div class="header-actions"><button class="btn btn-secondary" type="button" id="notification-btn">Bildirim Aç</button></div></div>
+            <form id="task-form" class="panel-body form-grid"><input type="hidden" id="task-id" name="id"><div class="form-row cols-2"><label class="field"><span>Proje</span><select id="task-project" name="projectId"></select></label><label class="field"><span>Atanacak Kişi</span><select id="task-assignee" name="assignedToId"></select></label></div><div class="form-row cols-2"><label class="field"><span>Görev</span><input type="text" id="task-title" name="title" placeholder="Beton dökümü takibi"></label><label class="field"><span>Tarih</span><input type="date" id="task-date" name="dueDate"></label></div><div class="form-row cols-2"><label class="field"><span>Durum</span><select id="task-status" name="status"><option value="Planlandı">Planlandı</option><option value="Devam Ediyor">Devam Ediyor</option><option value="Tamamlandı">Tamamlandı</option><option value="Ertelendi">Ertelendi</option></select></label><label class="field"><span>Not</span><input type="text" id="task-note" name="note" placeholder="Kısa görev notu"></label></div><div class="form-actions"><button type="reset" class="btn btn-secondary">Temizle</button><button type="submit" class="btn btn-primary">Görevi Kaydet</button></div></form>
+          </div>
+          <div class="panel"><div class="panel-header"><div><div class="eyebrow">Bu Ay</div><h2>Takvim</h2></div></div><div class="panel-body"><div class="calendar-grid" id="calendar-grid"></div></div></div>
+        </div>
+        <div class="panel" style="margin-top: 16px;"><div class="panel-header"><div><div class="eyebrow">Görevler</div><h2>Takvim Kayıtları</h2></div></div><div class="panel-body"><div class="records-list" id="task-records"></div></div></div>
+      </section>
+
+      <section class="view" id="view-documents">
+        <div class="panel"><div class="panel-header"><div><div class="eyebrow">Evrak Merkezi</div><h2>Şantiye Evrakları</h2></div></div><form id="document-form" class="panel-body form-grid"><div class="form-row cols-3"><label class="field"><span>Proje</span><select id="document-project" name="projectId"></select></label><label class="field"><span>Evrak Adı</span><input type="text" id="document-title" name="title" placeholder="Ruhsat, irsaliye, sözleşme..."></label><label class="field"><span>Tür</span><input type="text" id="document-type" name="type" placeholder="Ruhsat / İrsaliye / Fotoğraf"></label></div><label class="field"><span>Link</span><input type="url" id="document-url" name="url" placeholder="Google Drive / PDF / görsel linki"></label><label class="field"><span>Not</span><textarea id="document-note" name="note" rows="3" placeholder="Evrakla ilgili kısa açıklama"></textarea></label><div class="form-actions"><button type="reset" class="btn btn-secondary">Temizle</button><button type="submit" class="btn btn-primary">Evrakı Kaydet</button></div></form></div>
+        <div class="panel" style="margin-top: 16px;"><div class="panel-header"><div><div class="eyebrow">Arşiv</div><h2>Kayıtlı Evraklar</h2></div></div><div class="panel-body"><div class="records-list" id="document-records"></div></div></div>
       </section>
 
       <section class="view" id="view-records">
