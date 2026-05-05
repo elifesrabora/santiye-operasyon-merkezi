@@ -16,7 +16,7 @@ Github Pages uzerinde yayinlanmak ve Google Sheets ile beslenmek uzere hazirlana
 - `index.html`: uygulamanin ana kabugu
 - `assets/styles/main.css`: tek tema ve responsive arayuz
 - `assets/scripts/app.js`: ekran mantigi, local demo veri ve API entegrasyon noktasi
-- `google-apps-script.gs`: Google Sheets yazma/okuma katmani icin Apps Script sablonu
+- `google-apps-script.gs`: token kontrollu Google Sheets yazma/okuma ve login katmani icin Apps Script sablonu
 - `GOOGLE_SHEETS_SETUP.md`: Sheet sekmeleri, kolonlar ve deployment adimlari
 
 ## Github Pages Yayini
@@ -34,12 +34,28 @@ Uygulama dogrudan `.xlsx` dosyasina yazmak yerine `Google Sheets + Apps Script W
 ### Beklenen Endpointler
 
 - `GET {WEB_APP_URL}?resource=bootstrap`
+  - `token` parametresi gereklidir.
   - donus:
   ```json
   {
     "projects": [],
+    "users": [],
     "reports": [],
-    "puantaj": []
+    "puantaj": [],
+    "orders": []
+  }
+  ```
+
+- `POST {WEB_APP_URL}`
+  - ornek `login`:
+  ```json
+  {
+    "action": "login",
+    "token": "API_TOKEN",
+    "payload": {
+      "username": "admin",
+      "passwordHash": "sha256-hex"
+    }
   }
   ```
 
@@ -48,6 +64,7 @@ Uygulama dogrudan `.xlsx` dosyasina yazmak yerine `Google Sheets + Apps Script W
   ```json
   {
     "action": "saveReport",
+    "token": "API_TOKEN",
     "payload": {
       "projectId": "P-001",
       "date": "2026-05-04"
@@ -60,6 +77,7 @@ Uygulama dogrudan `.xlsx` dosyasina yazmak yerine `Google Sheets + Apps Script W
   ```json
   {
     "action": "savePuantaj",
+    "token": "API_TOKEN",
     "payload": {
       "chief": "Ahmet Usta",
       "date": "2026-05-04",
@@ -71,9 +89,11 @@ Uygulama dogrudan `.xlsx` dosyasina yazmak yerine `Google Sheets + Apps Script W
 ## Onerilen Google Sheet Sekmeleri
 
 - `Projects`
+- `Users`
 - `Reports`
 - `Puantaj`
 - `Workers`
+- `Orders`
 
 ## Sonraki Adimlar
 
