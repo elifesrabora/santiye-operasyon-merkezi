@@ -1,4 +1,5 @@
 const SPREADSHEET_ID = "17WZGVKxZ2cfSxEGkLPRQazHNFU4iYBAqMDYy99ZfErM";
+const API_TOKEN = "AYAZLAR_SANTIYE_2026";
 const SHEETS = {
   projects: "Projects",
   users: "Users",
@@ -12,9 +13,13 @@ function doGet(e) {
   const resource = (e && e.parameter && e.parameter.resource) || "bootstrap";
 
   if (resource === "bootstrap") {
+    if (!isAuthorized_((e && e.parameter && e.parameter.token) || "")) {
+      return jsonOutput({ ok: false, error: "Unauthorized" });
+    }
+
     return jsonOutput({
       projects: readProjects(),
-      users: readUsers(),
+      users: readUsers(false),
       reports: readReports(),
       puantaj: readPuantaj(),
       orders: readOrders()
@@ -29,6 +34,16 @@ function doPost(e) {
     const body = JSON.parse((e && e.postData && e.postData.contents) || "{}");
     const action = body.action;
     const payload = body.payload || {};
+
+    if (!isAuthorized_(body.token || "")) {
+      return jsonOutput({ ok: false, error: "Unauthorized" });
+    }
+
+    if (action === "login") {
+      const user = loginUser(payload);
+      if (!user) return jsonOutput({ ok: false, error: "Invalid credentials" });
+      return jsonOutput({ ok: true, user: user });
+    }
 
     if (action === "saveReport") {
       saveReport(payload);
@@ -75,18 +90,33 @@ function readProjects() {
   }).filter(function(item) { return item.id; });
 }
 
-function readUsers() {
+function readUsers(includeSecrets) {
   const rows = getSheetValues_(SHEETS.users);
   return rows.map(function(row) {
-    return {
+    const user = {
       id: row[0] || "",
       name: row[1] || "",
       username: row[2] || "",
-      passwordHash: row[3] || "",
       role: row[4] || "",
       active: row[5] === "" ? true : row[5]
     };
+    if (includeSecrets) user.passwordHash = row[3] || "";
+    return user;
   }).filter(function(item) { return item.id; });
+}
+
+function loginUser(payload) {
+  const username = String(payload.username || "");
+  const passwordHash = String(payload.passwordHash || "");
+  if (!username || !passwordHash) return null;
+
+  const user = readUsers(true).filter(function(item) {
+    return item.username === username && item.active !== false && item.passwordHash === passwordHash;
+  })[0];
+
+  if (!user) return null;
+  delete user.passwordHash;
+  return user;
 }
 
 function readReports() {
@@ -250,6 +280,10 @@ function getSheet_(sheetName) {
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) throw new Error("Sheet not found: " + sheetName);
   return sheet;
+}
+
+function isAuthorized_(token) {
+  return Boolean(API_TOKEN) && API_TOKEN !== "BURAYA_GUCLU_BIR_ANAHTAR_YAZIN" && token === API_TOKEN;
 }
 
 function normalizeDate_(value) {
