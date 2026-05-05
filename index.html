@@ -568,6 +568,11 @@
             </label>
 
             <label class="field">
+              <span>API Güvenlik Anahtarı</span>
+              <input type="password" name="apiToken" id="settings-api-token" placeholder="Apps Script içindeki API_TOKEN değeri">
+            </label>
+
+            <label class="field">
               <span>Şirket / Yapı Adı</span>
               <input type="text" name="companyName" id="settings-company-name" placeholder="Ayazlar Yapı">
             </label>
@@ -581,6 +586,7 @@
               <strong>Beklenen endpoint sözleşmesi</strong>
               <ul>
                 <li><code>GET ?resource=bootstrap</code> -> projeler, kullanıcılar, puantajlar, raporlar, siparişler</li>
+                <li><code>POST action=login</code> -> kullanıcı doğrulama</li>
                 <li><code>POST action=saveReport</code> -> yeni saha raporu kaydı</li>
                 <li><code>POST action=savePuantaj</code> -> yeni puantaj kaydı</li>
                 <li><code>POST action=saveOrder</code> -> yeni sipariş kaydı</li>
