@@ -10,6 +10,7 @@ const STORAGE_KEYS = {
 
 const DEFAULT_SETTINGS = {
   apiBaseUrl: "https://script.google.com/macros/s/AKfycbxsGhQNPJLG2UpWBDr6iUntH_XPT2iSUukKvf2gttwTpwq2o-tYzloTja8HGEwLLLU5Cg/exec",
+  apiToken: "AYAZLAR_SANTIYE_2026",
   companyName: "Ayazlar Yapı",
   sheetNote: "Ana Google Sheet: https://docs.google.com/spreadsheets/d/17WZGVKxZ2cfSxEGkLPRQazHNFU4iYBAqMDYy99ZfErM/edit?usp=sharing"
 };
@@ -116,6 +117,7 @@ const els = {
   exportRecordsBtn: document.getElementById("export-records-btn"),
   settingsForm: document.getElementById("settings-form"),
   settingsApiUrl: document.getElementById("settings-api-url"),
+  settingsApiToken: document.getElementById("settings-api-token"),
   settingsCompanyName: document.getElementById("settings-company-name"),
   settingsSheetNote: document.getElementById("settings-sheet-note")
 };
@@ -183,6 +185,7 @@ function wireNavigation() {
 
 function hydrateForms() {
   els.settingsApiUrl.value = state.settings.apiBaseUrl;
+  els.settingsApiToken.value = state.settings.apiToken || "";
   els.settingsCompanyName.value = state.settings.companyName;
   els.settingsSheetNote.value = state.settings.sheetNote;
 }
@@ -223,7 +226,7 @@ async function onLoginSubmit(event) {
 
   const username = els.loginUsername.value.trim();
   const password = els.loginPassword.value;
-  const user = await findMatchingUser(username, password);
+  const user = await findMatchingUser(username, password) || await loginWithApi(username, password);
 
   if (!user) {
     showLoginError("Kullanıcı adı veya şifre hatalı.");
@@ -301,8 +304,35 @@ async function findMatchingUser(username, password) {
   return state.users.find((item) => {
     if (item.username !== username || item.active === false) return false;
     const stored = String(item.passwordHash ?? "");
+    if (!stored) return false;
     return stored === hashed || stored === password;
   }) || null;
+}
+
+async function loginWithApi(username, password) {
+  if (!state.settings.apiBaseUrl || !state.settings.apiToken) return null;
+  try {
+    const response = await fetch(state.settings.apiBaseUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: "login",
+        token: state.settings.apiToken,
+        payload: { username, passwordHash: await sha256(password) }
+      })
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const result = await response.json();
+    if (!result.ok || !result.user) return null;
+    state.apiHealth = "ok";
+    setConnectionPill();
+    return normalizeUser(result.user);
+  } catch (error) {
+    console.error(error);
+    state.apiHealth = "error";
+    setConnectionPill();
+    return null;
+  }
 }
 
 function setView(viewName) {
@@ -853,6 +883,7 @@ function onSaveSettings(event) {
   event.preventDefault();
   state.settings = {
     apiBaseUrl: els.settingsApiUrl.value.trim(),
+    apiToken: els.settingsApiToken.value.trim(),
     companyName: els.settingsCompanyName.value.trim(),
     sheetNote: els.settingsSheetNote.value.trim()
   };
@@ -869,14 +900,23 @@ async function syncFromApi(options = {}) {
     setView("settings");
     return;
   }
+  if (!state.settings.apiToken) {
+    if (!silent) showToast("Önce API güvenlik anahtarını ayarlara girin.");
+    setConnectionPill();
+    setView("settings");
+    return;
+  }
   try {
     const url = new URL(state.settings.apiBaseUrl);
     url.searchParams.set("resource", "bootstrap");
+    if (state.settings.apiToken) url.searchParams.set("token", state.settings.apiToken);
     const response = await fetch(url.toString(), { method: "GET" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
     state.projects = payload.projects || state.projects;
-    state.users = (payload.users || state.users).map(normalizeUser);
+    if (Array.isArray(payload.users) && payload.users.length > 0) {
+      state.users = payload.users.map(normalizeUser);
+    }
     state.reports = payload.reports || state.reports;
     state.puantaj = payload.puantaj || state.puantaj;
     state.orders = payload.orders || state.orders;
@@ -907,12 +947,12 @@ async function syncFromApi(options = {}) {
 }
 
 async function sendToApi(action, payload) {
-  if (!state.settings.apiBaseUrl) return false;
+  if (!state.settings.apiBaseUrl || !state.settings.apiToken) return false;
   try {
     const response = await fetch(state.settings.apiBaseUrl, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action, payload })
+      body: JSON.stringify({ action, token: state.settings.apiToken, payload })
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     state.apiHealth = "ok";
@@ -1333,6 +1373,7 @@ function kpiCard(label, value, note) {
 
 function setConnectionPill() {
   if (!state.settings.apiBaseUrl) return (els.connectionPill.textContent = "Yerel Kayıt");
+  if (!state.settings.apiToken) return (els.connectionPill.textContent = "Token Gerekli");
   if (state.apiHealth === "ok") return (els.connectionPill.textContent = "Sheets Canlı");
   if (state.apiHealth === "error") return (els.connectionPill.textContent = "Sheets Hatası");
   els.connectionPill.textContent = "Sheets Bağlı";
