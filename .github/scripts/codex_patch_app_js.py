@@ -1,0 +1,132 @@
+from pathlib import Path
+
+path = Path('assets/scripts/app.js')
+text = path.read_text()
+
+replacements = [
+    ('''const DEFAULT_SETTINGS = {
+  apiBaseUrl: "https://script.google.com/macros/s/AKfycbxsGhQNPJLG2UpWBDr6iUntH_XPT2iSUukKvf2gttwTpwq2o-tYzloTja8HGEwLLLU5Cg/exec",
+  companyName: "Ayazlar Yapı",
+  sheetNote: "Ana Google Sheet: https://docs.google.com/spreadsheets/d/17WZGVKxZ2cfSxEGkLPRQazHNFU4iYBAqMDYy99ZfErM/edit?usp=sharing"
+};''', '''const DEFAULT_SETTINGS = {
+  apiBaseUrl: "https://script.google.com/macros/s/AKfycbxsGhQNPJLG2UpWBDr6iUntH_XPT2iSUukKvf2gttwTpwq2o-tYzloTja8HGEwLLLU5Cg/exec",
+  apiToken: "AYAZLAR_SANTIYE_2026",
+  companyName: "Ayazlar Yapı",
+  sheetNote: "Ana Google Sheet: https://docs.google.com/spreadsheets/d/17WZGVKxZ2cfSxEGkLPRQazHNFU4iYBAqMDYy99ZfErM/edit?usp=sharing"
+};'''),
+    ('''  settingsForm: document.getElementById("settings-form"),
+  settingsApiUrl: document.getElementById("settings-api-url"),
+  settingsCompanyName: document.getElementById("settings-company-name"),''', '''  settingsForm: document.getElementById("settings-form"),
+  settingsApiUrl: document.getElementById("settings-api-url"),
+  settingsApiToken: document.getElementById("settings-api-token"),
+  settingsCompanyName: document.getElementById("settings-company-name"),'''),
+    ('''function hydrateForms() {
+  els.settingsApiUrl.value = state.settings.apiBaseUrl;
+  els.settingsCompanyName.value = state.settings.companyName;''', '''function hydrateForms() {
+  els.settingsApiUrl.value = state.settings.apiBaseUrl;
+  els.settingsApiToken.value = state.settings.apiToken || "";
+  els.settingsCompanyName.value = state.settings.companyName;'''),
+    ('''  const user = await findMatchingUser(username, password);''', '''  const user = await findMatchingUser(username, password) || await loginWithApi(username, password);'''),
+    ('''async function findMatchingUser(username, password) {
+  const hashed = await sha256(password);
+  return state.users.find((item) => {
+    if (item.username !== username || item.active === false) return false;
+    const stored = String(item.passwordHash ?? "");
+    return stored === hashed || stored === password;
+  }) || null;
+}
+
+function setView(viewName) {''', '''async function findMatchingUser(username, password) {
+  const hashed = await sha256(password);
+  return state.users.find((item) => {
+    if (item.username !== username || item.active === false) return false;
+    const stored = String(item.passwordHash ?? "");
+    if (!stored) return false;
+    return stored === hashed || stored === password;
+  }) || null;
+}
+
+async function loginWithApi(username, password) {
+  if (!state.settings.apiBaseUrl || !state.settings.apiToken) return null;
+  try {
+    const response = await fetch(state.settings.apiBaseUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: "login",
+        token: state.settings.apiToken,
+        payload: { username, passwordHash: await sha256(password) }
+      })
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const result = await response.json();
+    if (!result.ok || !result.user) return null;
+    state.apiHealth = "ok";
+    setConnectionPill();
+    return normalizeUser(result.user);
+  } catch (error) {
+    console.error(error);
+    state.apiHealth = "error";
+    setConnectionPill();
+    return null;
+  }
+}
+
+function setView(viewName) {'''),
+    ('''  state.settings = {
+    apiBaseUrl: els.settingsApiUrl.value.trim(),
+    companyName: els.settingsCompanyName.value.trim(),''', '''  state.settings = {
+    apiBaseUrl: els.settingsApiUrl.value.trim(),
+    apiToken: els.settingsApiToken.value.trim(),
+    companyName: els.settingsCompanyName.value.trim(),'''),
+    ('''  if (!state.settings.apiBaseUrl) {
+    if (!silent) showToast("Önce Apps Script URL bilgisini ayarlara girin.");
+    setView("settings");
+    return;
+  }
+  try {''', '''  if (!state.settings.apiBaseUrl) {
+    if (!silent) showToast("Önce Apps Script URL bilgisini ayarlara girin.");
+    setView("settings");
+    return;
+  }
+  if (!state.settings.apiToken) {
+    if (!silent) showToast("Önce API güvenlik anahtarını ayarlara girin.");
+    setConnectionPill();
+    setView("settings");
+    return;
+  }
+  try {'''),
+    ('''    const url = new URL(state.settings.apiBaseUrl);
+    url.searchParams.set("resource", "bootstrap");
+    const response = await fetch(url.toString(), { method: "GET" });''', '''    const url = new URL(state.settings.apiBaseUrl);
+    url.searchParams.set("resource", "bootstrap");
+    if (state.settings.apiToken) url.searchParams.set("token", state.settings.apiToken);
+    const response = await fetch(url.toString(), { method: "GET" });'''),
+    ('''    state.projects = payload.projects || state.projects;
+    state.users = (payload.users || state.users).map(normalizeUser);
+    state.reports = payload.reports || state.reports;''', '''    state.projects = payload.projects || state.projects;
+    if (Array.isArray(payload.users) && payload.users.length > 0) {
+      state.users = payload.users.map(normalizeUser);
+    }
+    state.reports = payload.reports || state.reports;'''),
+    ('''async function sendToApi(action, payload) {
+  if (!state.settings.apiBaseUrl) return false;''', '''async function sendToApi(action, payload) {
+  if (!state.settings.apiBaseUrl || !state.settings.apiToken) return false;'''),
+    ('''      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action, payload })''', '''      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action, token: state.settings.apiToken, payload })'''),
+    ('''function setConnectionPill() {
+  if (!state.settings.apiBaseUrl) return (els.connectionPill.textContent = "Yerel Kayıt");
+  if (state.apiHealth === "ok") return (els.connectionPill.textContent = "Sheets Canlı");''', '''function setConnectionPill() {
+  if (!state.settings.apiBaseUrl) return (els.connectionPill.textContent = "Yerel Kayıt");
+  if (!state.settings.apiToken) return (els.connectionPill.textContent = "Token Gerekli");
+  if (state.apiHealth === "ok") return (els.connectionPill.textContent = "Sheets Canlı");'''),
+]
+
+for old, new in replacements:
+    text = text.replace(old, new)
+
+path.write_text(text)
+Path('.github/workflows/codex-app-js-patch.yml').unlink(missing_ok=True)
+Path('.github/scripts/codex_patch_app_js.py').unlink(missing_ok=True)
+Path('.codex-app-js-patch-trigger').unlink(missing_ok=True)
