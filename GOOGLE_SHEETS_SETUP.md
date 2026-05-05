@@ -9,9 +9,11 @@ Baglanacak ana tablo:
 Bu dosya icinde su sekmeleri acin:
 
 1. `Projects`
-2. `Reports`
-3. `Puantaj`
-4. `Workers`
+2. `Users`
+3. `Reports`
+4. `Puantaj`
+5. `Workers`
+6. `Orders`
 
 ## Kolon Yapilari
 
@@ -20,31 +22,39 @@ Bu dosya icinde su sekmeleri acin:
 1. `id`
 2. `name`
 3. `location`
-4. `progress`
-5. `budget`
+4. `startDate`
+5. `endDate`
+6. `budget`
+
+### `Users`
+
+1. `id`
+2. `name`
+3. `username`
+4. `passwordHash`
+5. `role`
+6. `active`
 
 ### `Reports`
 
 1. `id`
 2. `projectId`
 3. `date`
-4. `shift`
-5. `weather`
-6. `temperature`
-7. `workingHours`
-8. `workSummary`
-9. `nextPlan`
-10. `safetyPpe`
-11. `toolboxTalk`
-12. `incident`
-13. `notes`
+4. `workingHours`
+5. `workSummary`
+6. `nextPlan`
+7. `incident`
+8. `notes`
+9. `createdById`
+10. `createdAt`
 
 ### `Puantaj`
 
 1. `id`
 2. `date`
-3. `chief`
-4. `defaultProjectId`
+3. `chiefId`
+4. `createdById`
+5. `createdAt`
 
 ### `Workers`
 
@@ -54,16 +64,35 @@ Bu dosya icinde su sekmeleri acin:
 4. `job`
 5. `status`
 
+### `Orders`
+
+1. `id`
+2. `projectId`
+3. `date`
+4. `material`
+5. `spec`
+6. `quantity`
+7. `unit`
+8. `supplier`
+9. `unitPrice`
+10. `total`
+11. `priceSource`
+12. `orderedById`
+13. `status`
+14. `note`
+15. `createdAt`
+
 ## Apps Script Kurulumu
 
 1. Google Sheet icinde `Extensions` -> `Apps Script` acin.
 2. Varsayilan kodu silin.
 3. Repo icindeki [google-apps-script.gs](/Users/mirkanemirsancak/Documents/New%20project%203/google-apps-script.gs) dosyasini yapistirin.
-4. `Deploy` -> `New deployment` -> `Web app` secin.
-5. `Execute as`: `Me`
-6. `Who has access`: ilk test icin `Anyone`
-7. Cikan `Web app URL` degerini uygulamadaki `Ayarlar` ekranina girin.
+4. Kodun en ustundeki `API_TOKEN` degeri uygulamadaki varsayilan ayarla aynidir: `AYAZLAR_SANTIYE_2026`.
+5. `Deploy` -> `New deployment` -> `Web app` secin.
+6. `Execute as`: `Me`
+7. `Who has access`: ilk test icin `Anyone`
+8. Cikan `Web app URL` degerini uygulamadaki `Ayarlar` ekranina girin. Varsayilan token: `AYAZLAR_SANTIYE_2026`.
 
 ## Not
 
-Bu sheet linkinin herkese acik olmasi goruntuleme icin yeterli olabilir, ama yazma islemi icin asil kontrol Apps Script deployment ayarlarinda olacak.
+Bu sheet linkinin herkese acik olmasi goruntuleme icin yeterli olabilir, ama yazma islemi icin asil kontrol Apps Script deployment ayarlari ve `API_TOKEN` kontrolu ile yapilir.
