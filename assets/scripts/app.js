@@ -91,6 +91,7 @@ const els = {
   reportPdfBtn: document.getElementById("report-pdf-btn"),
   reportPdfFile: document.getElementById("report-pdf-file"),
   reportPdfUrl: document.getElementById("report-pdf-url"),
+  reportCurrentPdf: document.getElementById("report-current-pdf"),
   reportSubmitBtn: document.getElementById("report-submit-btn"),
   reportCancelEditBtn: document.getElementById("report-cancel-edit-btn"),
   puantajChiefLabel: document.getElementById("puantaj-chief-label"),
@@ -667,6 +668,10 @@ async function onSaveReport(event) {
       attachmentUploadedAt: apiResult.report.attachmentUploadedAt || payload.attachmentUploadedAt
     });
   }
+  if (attachment.file && !payload.attachmentUrl) {
+    showToast("PDF Drive'a yüklenemedi. Apps Script'i güncel deploy edin.");
+    return;
+  }
   delete payload.attachmentFile;
   if (existingId) state.reports = state.reports.map((item) => item.id === existingId ? payload : item);
   else state.reports.push(payload);
@@ -733,8 +738,9 @@ function editReport(reportId) {
   els.reportForm.elements.nextPlan.value = report.nextPlan || "";
   els.reportForm.elements.incident.value = report.incident || "";
   els.reportForm.elements.notes.value = report.notes || "";
-  els.reportPdfUrl.value = report.attachmentSource === "drive" ? (report.attachmentUrl || "") : "";
+  els.reportPdfUrl.value = report.attachmentUrl || "";
   els.reportPdfFile.value = "";
+  renderCurrentReportPdf(report);
   els.reportSubmitBtn.textContent = "Raporu Güncelle";
   els.reportCancelEditBtn.classList.remove("hidden");
   els.reportForm.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -750,8 +756,23 @@ function clearReportEditState() {
   els.reportDate.value = todayStr();
   els.reportPdfFile.value = "";
   els.reportPdfUrl.value = "";
+  renderCurrentReportPdf(null);
   els.reportSubmitBtn.textContent = "Raporu Kaydet";
   els.reportCancelEditBtn.classList.add("hidden");
+}
+
+function renderCurrentReportPdf(report) {
+  if (!els.reportCurrentPdf) return;
+  if (!report?.attachmentUrl) {
+    els.reportCurrentPdf.classList.add("hidden");
+    els.reportCurrentPdf.innerHTML = "";
+    return;
+  }
+  els.reportCurrentPdf.classList.remove("hidden");
+  els.reportCurrentPdf.innerHTML = `
+    <strong>Mevcut PDF:</strong>
+    <a href="${escapeHtml(report.attachmentUrl)}" target="_blank" rel="noreferrer">${escapeHtml(report.attachmentName || "PDF dosyası")}</a>
+  `;
 }
 
 function addWorker(worker = null) {
