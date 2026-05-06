@@ -152,6 +152,7 @@ const els = {
   recordTypeFilter: document.getElementById("record-type-filter"),
   recordProjectFilter: document.getElementById("record-project-filter"),
   recordSearch: document.getElementById("record-search"),
+  reportPageRecords: document.getElementById("report-page-records"),
   reportRecords: document.getElementById("report-records"),
   puantajRecords: document.getElementById("puantaj-records"),
   recordsOrderList: document.getElementById("records-order-list"),
@@ -397,6 +398,7 @@ function renderAll() {
   renderProjectOptions();
   renderDashboard();
   renderOrders();
+  renderReportPageRecords();
   renderProjectManagement();
   renderCalendar();
   renderDocuments();
@@ -518,6 +520,13 @@ function renderProjectManagement() {
       renderProjectDetail();
     });
   });
+}
+
+function renderReportPageRecords() {
+  if (!els.reportPageRecords) return;
+  els.reportPageRecords.innerHTML = state.reports.length
+    ? state.reports.slice().sort((a, b) => (b.date || "").localeCompare(a.date || "")).map(renderReportRecord).join("")
+    : emptyState("Henüz saha raporu kaydedilmedi.");
 }
 
 function renderRecords() {
@@ -1328,11 +1337,11 @@ async function syncFromApi(options = {}) {
     if (Array.isArray(payload.users) && payload.users.length > 0) {
       state.users = payload.users.map(normalizeUser);
     }
-    state.reports = payload.reports || state.reports;
-    state.puantaj = payload.puantaj || state.puantaj;
-    state.orders = payload.orders || state.orders;
-    state.tasks = payload.tasks || state.tasks;
-    state.documents = payload.documents || state.documents;
+    state.reports = mergeById(state.reports, payload.reports);
+    state.puantaj = mergeById(state.puantaj, payload.puantaj);
+    state.orders = mergeById(state.orders, payload.orders);
+    state.tasks = mergeById(state.tasks, payload.tasks);
+    state.documents = mergeById(state.documents, payload.documents);
     persist(STORAGE_KEYS.projects, state.projects);
     persist(STORAGE_KEYS.users, state.users);
     persist(STORAGE_KEYS.reports, state.reports);
@@ -1852,6 +1861,16 @@ function loadJson(key, fallback) {
 
 function persist(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function mergeById(localItems, remoteItems) {
+  if (!Array.isArray(remoteItems)) return localItems;
+  const merged = new Map();
+  [...remoteItems, ...localItems].forEach((item) => {
+    if (!item?.id) return;
+    merged.set(item.id, { ...(merged.get(item.id) || {}), ...item });
+  });
+  return [...merged.values()];
 }
 
 function todayStr() {
