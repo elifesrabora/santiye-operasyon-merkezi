@@ -149,7 +149,14 @@ const els = {
   calendarGrid: document.getElementById("calendar-grid"),
   notificationBtn: document.getElementById("notification-btn"),
   documentForm: document.getElementById("document-form"),
+  documentId: document.getElementById("document-id"),
   documentProject: document.getElementById("document-project"),
+  documentTitle: document.getElementById("document-title"),
+  documentType: document.getElementById("document-type"),
+  documentUrl: document.getElementById("document-url"),
+  documentNote: document.getElementById("document-note"),
+  documentSubmitBtn: document.getElementById("document-submit-btn"),
+  documentCancelEditBtn: document.getElementById("document-cancel-edit-btn"),
   documentProjectFilter: document.getElementById("document-project-filter"),
   documentTypeFilter: document.getElementById("document-type-filter"),
   documentRecords: document.getElementById("document-records"),
@@ -219,6 +226,8 @@ function bindAppEvents() {
   els.userForm.addEventListener("submit", onSaveUser);
   els.taskForm.addEventListener("submit", onSaveTask);
   els.documentForm.addEventListener("submit", onSaveDocument);
+  els.documentForm.addEventListener("reset", () => window.setTimeout(clearDocumentEditState, 0));
+  els.documentCancelEditBtn.addEventListener("click", resetDocumentForm);
   [els.documentProjectFilter, els.documentTypeFilter].forEach((el) => el.addEventListener("input", renderDocuments));
   els.notificationBtn.addEventListener("click", requestNotifications);
   els.projectFilterBtn.addEventListener("click", renderProjectDetail);
@@ -1260,21 +1269,28 @@ async function onSaveDocument(event) {
   const form = new FormData(els.documentForm);
   const title = String(form.get("title") || "").trim();
   if (!title) return showToast("Evrak adı gerekli.");
+  const existingId = String(form.get("id") || "");
+  const existingDocument = state.documents.find((item) => item.id === existingId);
   const payload = {
-    id: crypto.randomUUID(),
+    id: existingId || crypto.randomUUID(),
     projectId: form.get("projectId"),
     title,
     type: form.get("type") || "",
     url: form.get("url") || "",
     note: form.get("note") || "",
-    createdById: state.currentUser.id,
-    createdAt: new Date().toISOString()
+    createdById: existingDocument?.createdById || state.currentUser.id,
+    createdAt: existingDocument?.createdAt || new Date().toISOString(),
+    updatedAt: existingId ? new Date().toISOString() : ""
   };
-  const remoteSaved = await sendToApi("saveDocument", payload);
-  state.documents.push(payload);
+  const remoteSaved = await sendToApi(existingId ? "updateDocument" : "saveDocument", payload);
+  if (existingId) {
+    state.documents = state.documents.map((item) => item.id === existingId ? payload : item);
+  } else {
+    state.documents.push(payload);
+  }
   persist(STORAGE_KEYS.documents, state.documents);
   renderAll();
-  els.documentForm.reset();
+  resetDocumentForm();
   showToast(remoteSaved ? "Evrak kaydedildi." : "Evrak yerelde kaydedildi.");
 }
 
@@ -1314,7 +1330,7 @@ function normalizeDocumentType(type) {
 function renderDocumentCard(item) {
   const link = item.url ? `<a class="btn btn-secondary" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation();">Aç</a>` : "";
   return `
-    <article class="record-card">
+    <article class="record-card" onclick="window.__somActions.editDocument('${item.id}')">
       <div class="record-title">
         <strong>${escapeHtml(item.title)}</strong>
         <span class="tag">${escapeHtml(item.type || "Evrak")}</span>
@@ -1322,11 +1338,38 @@ function renderDocumentCard(item) {
       <div class="record-meta">${escapeHtml(projectName(item.projectId))} · ${escapeHtml(formatDateTime(item.createdAt))}</div>
       <div class="record-meta">${escapeHtml(item.note || "-")}</div>
       <div class="record-footer">
+        <button class="btn btn-secondary" type="button" onclick="event.stopPropagation(); window.__somActions.editDocument('${item.id}')">Düzenle</button>
         ${link}
         <button class="btn btn-secondary" type="button" onclick="event.stopPropagation(); window.__somActions.deleteDocument('${item.id}')">Sil</button>
       </div>
     </article>
   `;
+}
+
+function editDocument(documentId) {
+  const item = state.documents.find((documentItem) => documentItem.id === documentId);
+  if (!item) return;
+  setView("documents");
+  els.documentId.value = item.id;
+  els.documentProject.value = item.projectId || "";
+  els.documentTitle.value = item.title || "";
+  els.documentType.value = item.type || "Rapor";
+  els.documentUrl.value = item.url || "";
+  els.documentNote.value = item.note || "";
+  els.documentSubmitBtn.textContent = "Evrakı Güncelle";
+  els.documentCancelEditBtn.classList.remove("hidden");
+  els.documentForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function resetDocumentForm() {
+  els.documentForm.reset();
+  clearDocumentEditState();
+}
+
+function clearDocumentEditState() {
+  els.documentId.value = "";
+  els.documentSubmitBtn.textContent = "Evrakı Kaydet";
+  els.documentCancelEditBtn.classList.add("hidden");
 }
 
 async function deleteDocument(documentId) {
@@ -1905,6 +1948,7 @@ window.__somActions = {
   editReport,
   editPuantaj,
   editOrder,
+  editDocument,
   deleteDocument
 };
 
