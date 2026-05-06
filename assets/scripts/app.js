@@ -149,6 +149,8 @@ const els = {
   notificationBtn: document.getElementById("notification-btn"),
   documentForm: document.getElementById("document-form"),
   documentProject: document.getElementById("document-project"),
+  documentProjectFilter: document.getElementById("document-project-filter"),
+  documentTypeFilter: document.getElementById("document-type-filter"),
   documentRecords: document.getElementById("document-records"),
   recordTypeFilter: document.getElementById("record-type-filter"),
   recordProjectFilter: document.getElementById("record-project-filter"),
@@ -216,6 +218,7 @@ function bindAppEvents() {
   els.userForm.addEventListener("submit", onSaveUser);
   els.taskForm.addEventListener("submit", onSaveTask);
   els.documentForm.addEventListener("submit", onSaveDocument);
+  [els.documentProjectFilter, els.documentTypeFilter].forEach((el) => el.addEventListener("input", renderDocuments));
   els.notificationBtn.addEventListener("click", requestNotifications);
   els.projectFilterBtn.addEventListener("click", renderProjectDetail);
   els.projectDetailPdfBtn.addEventListener("click", exportProjectDetailPdf);
@@ -422,6 +425,8 @@ function renderProjectOptions() {
     select.disabled = state.projects.length === 0;
   });
   els.recordProjectFilter.innerHTML = filterOptions;
+  els.documentProjectFilter.innerHTML = filterOptions;
+  renderDocumentTypeOptions();
 
   els.taskAssignee.innerHTML = state.users.length
     ? state.users.map((user) => `<option value="${user.id}">${escapeHtml(user.name || user.username)}</option>`).join("")
@@ -1274,9 +1279,35 @@ async function onSaveDocument(event) {
 
 function renderDocuments() {
   if (!els.documentRecords) return;
-  els.documentRecords.innerHTML = state.documents.length
-    ? state.documents.slice().sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")).map(renderDocumentCard).join("")
-    : emptyState("Henüz evrak kaydı yok.");
+  renderDocumentTypeOptions();
+  const projectFilter = els.documentProjectFilter.value || "all";
+  const typeFilter = els.documentTypeFilter.value || "all";
+  const filteredDocuments = state.documents.filter((item) => {
+    if (projectFilter !== "all" && item.projectId !== projectFilter) return false;
+    if (typeFilter !== "all" && normalizeDocumentType(item.type) !== typeFilter) return false;
+    return true;
+  });
+  els.documentRecords.innerHTML = filteredDocuments.length
+    ? filteredDocuments.slice().sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")).map(renderDocumentCard).join("")
+    : emptyState("Seçili filtrelere uygun evrak bulunamadı.");
+}
+
+function renderDocumentTypeOptions() {
+  if (!els.documentTypeFilter) return;
+  const current = els.documentTypeFilter.value || "all";
+  const types = [...new Map(state.documents
+    .map((item) => String(item.type || "Evrak").trim())
+    .filter(Boolean)
+    .map((type) => [normalizeDocumentType(type), type])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], "tr-TR"));
+  els.documentTypeFilter.innerHTML = ['<option value="all">Tüm Evrak Türleri</option>']
+    .concat(types.map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`))
+    .join("");
+  els.documentTypeFilter.value = types.some(([value]) => value === current) ? current : "all";
+}
+
+function normalizeDocumentType(type) {
+  return String(type || "Evrak").trim().toLocaleLowerCase("tr-TR");
 }
 
 function renderDocumentCard(item) {
