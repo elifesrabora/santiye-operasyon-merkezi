@@ -33,6 +33,7 @@ const state = {
 };
 
 const AUTO_SYNC_MS = 60000;
+const DEFAULT_DOCUMENT_TYPES = ["Rapor", "Sözleşme", "Vekaletname", "İrsaliye"];
 const PDF_FONT_FAMILY = "Roboto";
 const PDF_FONT_FILES = {
   normal: {
@@ -1295,8 +1296,8 @@ function renderDocuments() {
 function renderDocumentTypeOptions() {
   if (!els.documentTypeFilter) return;
   const current = els.documentTypeFilter.value || "all";
-  const types = [...new Map(state.documents
-    .map((item) => String(item.type || "Evrak").trim())
+  const types = [...new Map(DEFAULT_DOCUMENT_TYPES
+    .concat(state.documents.map((item) => String(item.type || "Evrak").trim()))
     .filter(Boolean)
     .map((type) => [normalizeDocumentType(type), type])).entries()]
     .sort((a, b) => a[1].localeCompare(b[1], "tr-TR"));
