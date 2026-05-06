@@ -80,6 +80,7 @@ function doPost(e) {
     if (action === "updateOrder") { updateOrder(payload); return jsonOutput({ ok: true }); }
     if (action === "saveTask") { saveTask(payload); return jsonOutput({ ok: true }); }
     if (action === "saveDocument") { saveDocument(payload); return jsonOutput({ ok: true }); }
+    if (action === "deleteDocument") { deleteDocument(payload); return jsonOutput({ ok: true }); }
 
     if (action === "saveProject") {
       saveProject(payload);
@@ -343,6 +344,10 @@ function saveOrder(payload) {
 function updateOrder(payload) { const sheet = getSheet_(SHEETS.orders); const rowIndex = findRowIndexById_(sheet, payload.id); if (!rowIndex) { saveOrder(payload); return; } sheet.getRange(rowIndex, 1, 1, 15).setValues([[payload.id || "", payload.projectId || "", payload.date || "", payload.material || "", payload.spec || "", payload.quantity || 0, payload.unit || "", payload.supplier || "", payload.unitPrice || 0, payload.total || 0, payload.priceSource || "", payload.orderedById || "", payload.status || "", payload.note || "", payload.createdAt || new Date().toISOString()]]); }
 function saveTask(payload) { getSheet_(SHEETS.tasks).appendRow([payload.id || Utilities.getUuid(), payload.projectId || "", payload.title || "", payload.assignedToId || "", payload.dueDate || "", payload.status || "Planlandı", payload.note || "", payload.createdById || "", payload.createdAt || new Date().toISOString()]); }
 function saveDocument(payload) { getSheet_(SHEETS.documents).appendRow([payload.id || Utilities.getUuid(), payload.projectId || "", payload.title || "", payload.type || "", payload.url || "", payload.note || "", payload.createdById || "", payload.createdAt || new Date().toISOString()]); }
+
+function deleteDocument(payload) {
+  deleteRowsByFirstColumn_(getSheet_(SHEETS.documents), payload.id);
+}
 
 function saveProject(payload) {
   getSheet_(SHEETS.projects).appendRow([

@@ -1280,7 +1280,7 @@ function renderDocuments() {
 }
 
 function renderDocumentCard(item) {
-  const link = item.url ? `<a class="btn btn-secondary" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">Aç</a>` : "";
+  const link = item.url ? `<a class="btn btn-secondary" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation();">Aç</a>` : "";
   return `
     <article class="record-card">
       <div class="record-title">
@@ -1289,9 +1289,23 @@ function renderDocumentCard(item) {
       </div>
       <div class="record-meta">${escapeHtml(projectName(item.projectId))} · ${escapeHtml(formatDateTime(item.createdAt))}</div>
       <div class="record-meta">${escapeHtml(item.note || "-")}</div>
-      <div class="record-footer">${link}</div>
+      <div class="record-footer">
+        ${link}
+        <button class="btn btn-secondary" type="button" onclick="event.stopPropagation(); window.__somActions.deleteDocument('${item.id}')">Sil</button>
+      </div>
     </article>
   `;
+}
+
+async function deleteDocument(documentId) {
+  const item = state.documents.find((documentItem) => documentItem.id === documentId);
+  if (!item) return;
+  if (!window.confirm(`"${item.title}" evrak kaydı silinsin mi?`)) return;
+  const remoteDeleted = await sendToApi("deleteDocument", { id: documentId });
+  state.documents = state.documents.filter((documentItem) => documentItem.id !== documentId);
+  persist(STORAGE_KEYS.documents, state.documents);
+  renderAll();
+  showToast(remoteDeleted ? "Evrak silindi." : "Evrak yerelden silindi.");
 }
 
 async function requestNotifications() {
@@ -1858,7 +1872,8 @@ window.__somPdf = {
 window.__somActions = {
   editReport,
   editPuantaj,
-  editOrder
+  editOrder,
+  deleteDocument
 };
 
 function kpiCard(label, value, note) {
