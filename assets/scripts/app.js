@@ -641,7 +641,7 @@ async function onSaveReport(event) {
   }
   const payload = {
     id: existingId || crypto.randomUUID(),
-    projectId: form.get("projectId"),
+    projectId: form.get("projectId") || els.reportProject.value || state.selectedProjectId || state.projects[0]?.id || "",
     date: form.get("date"),
     workingHours: form.get("workingHours"),
     workSummary: form.get("workSummary"),
@@ -1052,7 +1052,8 @@ function getProjectDetailData(projectId) {
   const from = els.projectFilterFrom.value;
   const to = els.projectFilterTo.value;
   const inRange = (date) => (!from || date >= from) && (!to || date <= to);
-  const reports = state.reports.filter((item) => item.projectId === projectId && inRange(item.date)).sort((a, b) => b.date.localeCompare(a.date));
+  const project = state.projects.find((item) => item.id === projectId);
+  const reports = state.reports.filter((item) => reportBelongsToProject(item, project) && inRange(item.date)).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   const orders = state.orders.filter((item) => item.projectId === projectId && inRange(item.date)).sort((a, b) => b.date.localeCompare(a.date));
   const puantaj = state.puantaj.filter((entry) => inRange(entry.date) && entry.workers.some((worker) => worker.projectId === projectId)).sort((a, b) => b.date.localeCompare(a.date));
   const documents = state.documents.filter((item) => item.projectId === projectId).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
@@ -1079,6 +1080,14 @@ function getProjectDetailData(projectId) {
     latestPuantajDate: puantaj[0]?.date || "",
     activityTotal: reports.length + orders.length + puantaj.length + documents.length + tasks.length
   };
+}
+
+function reportBelongsToProject(report, project) {
+  if (!project) return false;
+  const reportProjectId = String(report.projectId || "").trim();
+  if (reportProjectId === project.id) return true;
+  if (reportProjectId && reportProjectId.toLocaleLowerCase("tr-TR") === String(project.name || "").trim().toLocaleLowerCase("tr-TR")) return true;
+  return !reportProjectId && state.projects.length === 1;
 }
 
 function buildProjectBrief(project, detail) {
