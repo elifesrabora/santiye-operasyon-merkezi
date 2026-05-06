@@ -13,7 +13,7 @@ const SHEETS = {
 const HEADERS = {
   Projects: ["id", "name", "location", "startDate", "endDate", "budget"],
   Users: ["id", "name", "username", "passwordHash", "role", "active"],
-  Reports: ["id", "projectId", "date", "workingHours", "workSummary", "nextPlan", "incident", "notes", "createdById", "createdAt"],
+  Reports: ["id", "projectId", "date", "workingHours", "workSummary", "nextPlan", "incident", "notes", "createdById", "createdAt", "attachmentName", "attachmentUrl", "attachmentSource", "attachmentUploadedAt"],
   Puantaj: ["id", "date", "chiefId", "createdById", "createdAt"],
   Workers: ["puantajId", "name", "projectId", "job", "status"],
   Orders: ["id", "projectId", "date", "material", "spec", "quantity", "unit", "supplier", "unitPrice", "total", "priceSource", "orderedById", "status", "note", "createdAt"],
@@ -60,11 +60,10 @@ function doPost(e) {
     }
 
     if (action === "saveReport") {
-      saveReport(payload);
-      return jsonOutput({ ok: true });
+      return jsonOutput({ ok: true, report: saveReport(payload) });
     }
 
-    if (action === "updateReport") { updateReport(payload); return jsonOutput({ ok: true }); }
+    if (action === "updateReport") { return jsonOutput({ ok: true, report: updateReport(payload) }); }
 
     if (action === "savePuantaj") {
       savePuantaj(payload);
@@ -154,7 +153,11 @@ function readReports() {
       incident: row[6] || "",
       notes: row[7] || "",
       createdById: row[8] || "",
-      createdAt: row[9] || ""
+      createdAt: row[9] || "",
+      attachmentName: row[10] || "",
+      attachmentUrl: row[11] || "",
+      attachmentSource: row[12] || "",
+      attachmentUploadedAt: row[13] || ""
     };
   }).filter(function(item) { return item.id; });
 }
@@ -215,6 +218,7 @@ function readTasks() { const rows = getSheetValues_(SHEETS.tasks); return rows.m
 function readDocuments() { const rows = getSheetValues_(SHEETS.documents); return rows.map(function(row) { return { id: row[0] || "", projectId: row[1] || "", title: row[2] || "", type: row[3] || "", url: row[4] || "", note: row[5] || "", createdById: row[6] || "", createdAt: row[7] || "" }; }).filter(function(item) { return item.id; }); }
 
 function saveReport(payload) {
+  payload = prepareReportAttachment_(payload);
   getSheet_(SHEETS.reports).appendRow([
     payload.id || Utilities.getUuid(),
     payload.projectId || "",
@@ -225,15 +229,64 @@ function saveReport(payload) {
     payload.incident || "",
     payload.notes || "",
     payload.createdById || "",
-    payload.createdAt || new Date().toISOString()
+    payload.createdAt || new Date().toISOString(),
+    payload.attachmentName || "",
+    payload.attachmentUrl || "",
+    payload.attachmentSource || "",
+    payload.attachmentUploadedAt || ""
   ]);
+  return sanitizeReportPayload_(payload);
 }
 
 function updateReport(payload) {
+  payload = prepareReportAttachment_(payload);
   const sheet = getSheet_(SHEETS.reports);
   const rowIndex = findRowIndexById_(sheet, payload.id);
-  if (!rowIndex) { saveReport(payload); return; }
-  sheet.getRange(rowIndex, 1, 1, 10).setValues([[payload.id || "", payload.projectId || "", payload.date || "", payload.workingHours || "", payload.workSummary || "", payload.nextPlan || "", payload.incident || "", payload.notes || "", payload.createdById || "", payload.createdAt || new Date().toISOString()]]);
+  if (!rowIndex) return saveReport(payload);
+  sheet.getRange(rowIndex, 1, 1, 14).setValues([[
+    payload.id || "",
+    payload.projectId || "",
+    payload.date || "",
+    payload.workingHours || "",
+    payload.workSummary || "",
+    payload.nextPlan || "",
+    payload.incident || "",
+    payload.notes || "",
+    payload.createdById || "",
+    payload.createdAt || new Date().toISOString(),
+    payload.attachmentName || "",
+    payload.attachmentUrl || "",
+    payload.attachmentSource || "",
+    payload.attachmentUploadedAt || ""
+  ]]);
+  return sanitizeReportPayload_(payload);
+}
+
+function prepareReportAttachment_(payload) {
+  if (!payload.attachmentFile || !payload.attachmentFile.data) return payload;
+  const file = payload.attachmentFile;
+  const bytes = Utilities.base64Decode(file.data);
+  const blob = Utilities.newBlob(bytes, file.mimeType || "application/pdf", file.name || "saha-raporu.pdf");
+  const driveFile = DriveApp.createFile(blob);
+  try {
+    driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (error) {}
+  payload.attachmentName = file.name || payload.attachmentName || driveFile.getName();
+  payload.attachmentUrl = driveFile.getUrl();
+  payload.attachmentSource = "upload";
+  payload.attachmentUploadedAt = payload.attachmentUploadedAt || new Date().toISOString();
+  delete payload.attachmentFile;
+  return payload;
+}
+
+function sanitizeReportPayload_(payload) {
+  return {
+    id: payload.id || "",
+    attachmentName: payload.attachmentName || "",
+    attachmentUrl: payload.attachmentUrl || "",
+    attachmentSource: payload.attachmentSource || "",
+    attachmentUploadedAt: payload.attachmentUploadedAt || ""
+  };
 }
 
 function savePuantaj(payload) {

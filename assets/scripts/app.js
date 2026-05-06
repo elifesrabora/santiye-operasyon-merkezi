@@ -89,6 +89,8 @@ const els = {
   reportProject: document.getElementById("report-project"),
   reportDate: document.getElementById("report-date"),
   reportPdfBtn: document.getElementById("report-pdf-btn"),
+  reportPdfFile: document.getElementById("report-pdf-file"),
+  reportPdfUrl: document.getElementById("report-pdf-url"),
   reportSubmitBtn: document.getElementById("report-submit-btn"),
   reportCancelEditBtn: document.getElementById("report-cancel-edit-btn"),
   puantajChiefLabel: document.getElementById("puantaj-chief-label"),
@@ -567,8 +569,10 @@ function renderReportRecord(item) {
       <div class="record-meta">Yarın planı: ${escapeHtml(item.nextPlan || "-")}</div>
       <div class="record-meta">Ramak kala: ${escapeHtml(item.incident || "-")}</div>
       <div class="record-meta">Kaydı giren: ${escapeHtml(userName(item.createdById))}</div>
+      ${item.attachmentUrl ? `<div class="record-meta">Ek PDF: <a href="${escapeHtml(item.attachmentUrl)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation();">${escapeHtml(item.attachmentName || "PDF dosyası")}</a></div>` : ""}
       <div class="record-footer">
         <button class="btn btn-secondary" type="button" onclick="event.stopPropagation(); window.__somActions.editReport('${item.id}')">Düzenle</button>
+        ${item.attachmentUrl ? `<a class="btn btn-secondary" href="${escapeHtml(item.attachmentUrl)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation();">Yüklü PDF</a>` : ""}
         <button class="btn btn-secondary" type="button" onclick="event.stopPropagation(); window.__somPdf.exportReport('${item.id}')">PDF Al</button>
       </div>
     </article>
@@ -619,6 +623,13 @@ async function onSaveReport(event) {
   const form = new FormData(els.reportForm);
   const existingId = String(form.get("id") || "");
   const existingReport = state.reports.find((item) => item.id === existingId);
+  let attachment;
+  try {
+    attachment = await buildReportAttachment(existingReport);
+  } catch (error) {
+    showToast(error.message);
+    return;
+  }
   const payload = {
     id: existingId || crypto.randomUUID(),
     projectId: form.get("projectId"),
@@ -628,17 +639,77 @@ async function onSaveReport(event) {
     nextPlan: form.get("nextPlan"),
     incident: form.get("incident"),
     notes: form.get("notes"),
+    attachmentName: attachment.name,
+    attachmentUrl: attachment.url,
+    attachmentSource: attachment.source,
+    attachmentUploadedAt: attachment.uploadedAt,
+    attachmentFile: attachment.file,
     createdById: existingId ? (existingReport?.createdById || state.currentUser.id) : state.currentUser.id,
     createdAt: existingId ? (existingReport?.createdAt || new Date().toISOString()) : new Date().toISOString(),
     updatedAt: existingId ? new Date().toISOString() : ""
   };
-  const remoteSaved = await sendToApi(existingId ? "updateReport" : "saveReport", payload);
+  const apiResult = await sendToApi(existingId ? "updateReport" : "saveReport", payload);
+  const remoteSaved = Boolean(apiResult);
+  if (apiResult?.report) {
+    Object.assign(payload, {
+      attachmentName: apiResult.report.attachmentName || payload.attachmentName,
+      attachmentUrl: apiResult.report.attachmentUrl || payload.attachmentUrl,
+      attachmentSource: apiResult.report.attachmentSource || payload.attachmentSource,
+      attachmentUploadedAt: apiResult.report.attachmentUploadedAt || payload.attachmentUploadedAt
+    });
+  }
+  delete payload.attachmentFile;
   if (existingId) state.reports = state.reports.map((item) => item.id === existingId ? payload : item);
   else state.reports.push(payload);
   persist(STORAGE_KEYS.reports, state.reports);
   renderAll();
   resetReportForm();
   showToast(remoteSaved ? "Saha raporu kaydedildi." : "Saha raporu yerelde kaydedildi.");
+}
+
+async function buildReportAttachment(existingReport = null) {
+  const file = els.reportPdfFile.files?.[0] || null;
+  const url = els.reportPdfUrl.value.trim();
+  if (file && file.type !== "application/pdf") throw new Error("Sadece PDF dosyası yükleyebilirsiniz.");
+  if (file && (!state.settings.apiBaseUrl || !state.settings.apiToken)) throw new Error("Bilgisayardan PDF yüklemek için Apps Script bağlantısı gerekli.");
+  if (file) {
+    return {
+      name: file.name,
+      url: existingReport?.attachmentUrl || "",
+      source: "upload",
+      uploadedAt: new Date().toISOString(),
+      file: {
+        name: file.name,
+        mimeType: file.type || "application/pdf",
+        data: await fileToBase64(file)
+      }
+    };
+  }
+  if (url) {
+    return {
+      name: existingReport?.attachmentName || "Drive PDF",
+      url,
+      source: "drive",
+      uploadedAt: existingReport?.attachmentUploadedAt || new Date().toISOString(),
+      file: null
+    };
+  }
+  return {
+    name: existingReport?.attachmentName || "",
+    url: existingReport?.attachmentUrl || "",
+    source: existingReport?.attachmentSource || "",
+    uploadedAt: existingReport?.attachmentUploadedAt || "",
+    file: null
+  };
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || "").split(",")[1] || "");
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 function editReport(reportId) {
@@ -653,6 +724,8 @@ function editReport(reportId) {
   els.reportForm.elements.nextPlan.value = report.nextPlan || "";
   els.reportForm.elements.incident.value = report.incident || "";
   els.reportForm.elements.notes.value = report.notes || "";
+  els.reportPdfUrl.value = report.attachmentSource === "drive" ? (report.attachmentUrl || "") : "";
+  els.reportPdfFile.value = "";
   els.reportSubmitBtn.textContent = "Raporu Güncelle";
   els.reportCancelEditBtn.classList.remove("hidden");
   els.reportForm.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -666,6 +739,8 @@ function resetReportForm() {
 function clearReportEditState() {
   els.reportId.value = "";
   els.reportDate.value = todayStr();
+  els.reportPdfFile.value = "";
+  els.reportPdfUrl.value = "";
   els.reportSubmitBtn.textContent = "Raporu Kaydet";
   els.reportCancelEditBtn.classList.add("hidden");
 }
@@ -1295,9 +1370,11 @@ async function sendToApi(action, payload) {
       body: JSON.stringify({ action, token: state.settings.apiToken, payload })
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const result = await response.json().catch(() => ({ ok: true }));
+    if (result.ok === false) throw new Error(result.error || "API hatası");
     state.apiHealth = "ok";
     setConnectionPill();
-    return true;
+    return result;
   } catch (error) {
     console.error(error);
     state.apiHealth = "error";
@@ -1414,6 +1491,13 @@ async function exportReportPdf(reportId) {
   pdfSectionTable(doc, "Yarın Planı", report.nextPlan || "-", nextY);
   const notesY = getLastAutoTableY(doc, nextY) + 16;
   pdfSectionTable(doc, "Ek Notlar", report.notes || "-", notesY);
+  if (report.attachmentUrl) {
+    const attachmentY = getLastAutoTableY(doc, notesY) + 16;
+    pdfKeyValueTable(doc, attachmentY, [
+      ["Ek PDF", report.attachmentName || "PDF dosyası"],
+      ["PDF Linki", report.attachmentUrl]
+    ]);
+  }
   doc.save(`SahaRaporu_${safeName(projectName(report.projectId))}_${report.date}.pdf`);
 }
 
