@@ -1,0 +1,37 @@
+name: Codex Document Edit Update
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply document edit patch
+        run: node scripts/codex-document-edit-patch.js
+      - name: Verify JavaScript
+        run: |
+          node --check assets/scripts/app.js
+          cp google-apps-script.gs /tmp/google-apps-script-check.js
+          node --check /tmp/google-apps-script-check.js
+      - name: Commit changes
+        run: |
+          git config user.name "codex-update-bot"
+          git config user.email "codex-update-bot@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git add index.html assets/scripts/app.js google-apps-script.gs
+          git commit -m "Add document editing"
+          git push
