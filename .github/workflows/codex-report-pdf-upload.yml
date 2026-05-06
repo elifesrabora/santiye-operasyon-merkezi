@@ -1,0 +1,31 @@
+name: Codex report PDF upload
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".codex-report-pdf-upload-trigger"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply report PDF upload patch
+        run: python .github/scripts/codex_patch_report_pdf_upload.py
+      - name: Verify JavaScript
+        run: |
+          node --check assets/scripts/app.js
+          cp google-apps-script.gs /tmp/google-apps-script-check.js
+          node --check /tmp/google-apps-script-check.js
+      - name: Commit patch
+        run: |
+          git config user.name "codex-app[bot]"
+          git config user.email "codex-app[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Add PDF upload to daily reports"
+          git push
