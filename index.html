@@ -140,6 +140,7 @@
             </div>
           </div>
           <form id="report-form" class="panel-body form-grid">
+            <input type="hidden" id="report-id" name="id">
             <div class="info-card">
               Proje eklemek için <strong>Şantiyeler</strong> sekmesine gidin. Eklediğiniz projeler burada otomatik seçilebilir olur.
             </div>
@@ -183,7 +184,8 @@
 
             <div class="form-actions">
               <button type="reset" class="btn btn-secondary">Temizle</button>
-              <button type="submit" class="btn btn-primary">Raporu Kaydet</button>
+              <button type="button" class="btn btn-secondary hidden" id="report-cancel-edit-btn">Düzenlemeyi İptal Et</button>
+              <button type="submit" class="btn btn-primary" id="report-submit-btn">Raporu Kaydet</button>
             </div>
           </form>
         </div>
@@ -204,6 +206,7 @@
 
           <div class="panel-body">
             <form id="puantaj-meta-form" class="form-grid">
+              <input type="hidden" id="puantaj-id">
               <div class="info-card">
                 Şefler ve projeler <strong>Şantiyeler</strong> sekmesinden tanımlanır. Buradaki seçimler o listelerden gelir.
               </div>
@@ -224,6 +227,7 @@
 
             <div class="form-actions">
               <button class="btn btn-secondary" id="export-puantaj-btn" type="button">CSV İndir</button>
+              <button class="btn btn-secondary hidden" id="puantaj-cancel-edit-btn" type="button">Düzenlemeyi İptal Et</button>
               <button class="btn btn-primary" id="save-puantaj-btn" type="button">Puantajı Kaydet</button>
             </div>
           </div>

@@ -337,6 +337,7 @@ button, input, select, textarea {
   border: 1px solid var(--border);
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(26, 34, 61, 0.88), rgba(18, 24, 43, 0.88));
+  cursor: pointer;
 }
 
 .project-item {

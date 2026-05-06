@@ -64,10 +64,14 @@ function doPost(e) {
       return jsonOutput({ ok: true });
     }
 
+    if (action === "updateReport") { updateReport(payload); return jsonOutput({ ok: true }); }
+
     if (action === "savePuantaj") {
       savePuantaj(payload);
       return jsonOutput({ ok: true });
     }
+
+    if (action === "updatePuantaj") { updatePuantaj(payload); return jsonOutput({ ok: true }); }
 
     if (action === "saveOrder") {
       saveOrder(payload);
@@ -225,6 +229,13 @@ function saveReport(payload) {
   ]);
 }
 
+function updateReport(payload) {
+  const sheet = getSheet_(SHEETS.reports);
+  const rowIndex = findRowIndexById_(sheet, payload.id);
+  if (!rowIndex) { saveReport(payload); return; }
+  sheet.getRange(rowIndex, 1, 1, 10).setValues([[payload.id || "", payload.projectId || "", payload.date || "", payload.workingHours || "", payload.workSummary || "", payload.nextPlan || "", payload.incident || "", payload.notes || "", payload.createdById || "", payload.createdAt || new Date().toISOString()]]);
+}
+
 function savePuantaj(payload) {
   const puantajId = payload.id || Utilities.getUuid();
   getSheet_(SHEETS.puantaj).appendRow([
@@ -244,6 +255,16 @@ function savePuantaj(payload) {
       worker.status || "present"
     ]);
   });
+}
+
+function updatePuantaj(payload) {
+  const puantajSheet = getSheet_(SHEETS.puantaj);
+  const puantajId = payload.id || Utilities.getUuid();
+  const rowIndex = findRowIndexById_(puantajSheet, puantajId);
+  if (!rowIndex) { savePuantaj(payload); return; }
+  puantajSheet.getRange(rowIndex, 1, 1, 5).setValues([[puantajId, payload.date || "", payload.chiefId || "", payload.createdById || "", payload.createdAt || new Date().toISOString()]]);
+  deleteRowsByFirstColumn_(getSheet_(SHEETS.workers), puantajId);
+  (payload.workers || []).forEach(function(worker) { getSheet_(SHEETS.workers).appendRow([puantajId, worker.name || "", worker.projectId || "", worker.job || "", worker.status || "present"]); });
 }
 
 function saveOrder(payload) {
@@ -309,6 +330,15 @@ function getSheet_(sheetName) {
 }
 
 function findRowIndexById_(sheet, id) { if (!id) return 0; const lastRow = sheet.getLastRow(); if (lastRow < 2) return 0; const ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues(); for (var i = 0; i < ids.length; i += 1) { if (String(ids[i][0]) === String(id)) return i + 2; } return 0; }
+
+function deleteRowsByFirstColumn_(sheet, value) {
+  const lastRow = sheet.getLastRow();
+  if (!value || lastRow < 2) return;
+  const rows = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  for (var i = rows.length - 1; i >= 0; i -= 1) {
+    if (String(rows[i][0]) === String(value)) sheet.deleteRow(i + 2);
+  }
+}
 
 function isAuthorized_(token) {
   return Boolean(API_TOKEN) && API_TOKEN !== "BURAYA_GUCLU_BIR_ANAHTAR_YAZIN" && token === API_TOKEN;

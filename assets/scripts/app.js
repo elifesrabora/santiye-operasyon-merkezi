@@ -33,6 +33,19 @@ const state = {
 };
 
 const AUTO_SYNC_MS = 60000;
+const PDF_FONT_FAMILY = "Roboto";
+const PDF_FONT_FILES = {
+  normal: {
+    fileName: "Roboto-Regular.ttf",
+    url: "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Regular.ttf"
+  },
+  bold: {
+    fileName: "Roboto-Medium.ttf",
+    url: "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Medium.ttf"
+  }
+};
+let pdfFontPromise = null;
+let pdfFontFamily = "helvetica";
 
 const viewMeta = {
   dashboard: ["Dashboard", "Saha, puantaj, sipariş ve şantiye özetini tek ekranda izleyin."],
@@ -72,15 +85,20 @@ const els = {
   projectList: document.getElementById("project-list"),
   todayFeed: document.getElementById("today-feed"),
   reportForm: document.getElementById("report-form"),
+  reportId: document.getElementById("report-id"),
   reportProject: document.getElementById("report-project"),
   reportDate: document.getElementById("report-date"),
   reportPdfBtn: document.getElementById("report-pdf-btn"),
+  reportSubmitBtn: document.getElementById("report-submit-btn"),
+  reportCancelEditBtn: document.getElementById("report-cancel-edit-btn"),
   puantajChiefLabel: document.getElementById("puantaj-chief-label"),
+  puantajId: document.getElementById("puantaj-id"),
   puantajDate: document.getElementById("puantaj-date"),
   workerList: document.getElementById("workers-list"),
   workerTemplate: document.getElementById("worker-template"),
   addWorkerBtn: document.getElementById("add-worker-btn"),
   savePuantajBtn: document.getElementById("save-puantaj-btn"),
+  puantajCancelEditBtn: document.getElementById("puantaj-cancel-edit-btn"),
   exportPuantajBtn: document.getElementById("export-puantaj-btn"),
   puantajPdfBtn: document.getElementById("puantaj-pdf-btn"),
   orderForm: document.getElementById("order-form"),
@@ -178,8 +196,11 @@ function bindAppEvents() {
   updateOrderTotal();
 
   els.reportForm.addEventListener("submit", onSaveReport);
+  els.reportForm.addEventListener("reset", () => window.setTimeout(clearReportEditState, 0));
+  els.reportCancelEditBtn.addEventListener("click", resetReportForm);
   els.addWorkerBtn.addEventListener("click", () => addWorker());
   els.savePuantajBtn.addEventListener("click", onSavePuantaj);
+  els.puantajCancelEditBtn.addEventListener("click", resetPuantajForm);
   els.exportPuantajBtn.addEventListener("click", exportPuantajCsv);
   els.reportPdfBtn.addEventListener("click", exportLatestReportPdf);
   els.puantajPdfBtn.addEventListener("click", exportLatestPuantajPdf);
@@ -536,7 +557,7 @@ function renderRecords() {
 
 function renderReportRecord(item) {
   return `
-    <article class="record-card">
+    <article class="record-card" onclick="window.__somActions.editReport('${item.id}')">
       <div class="record-title">
         <strong>${escapeHtml(projectName(item.projectId))}</strong>
         <span class="tag">${item.date}</span>
@@ -547,7 +568,8 @@ function renderReportRecord(item) {
       <div class="record-meta">Ramak kala: ${escapeHtml(item.incident || "-")}</div>
       <div class="record-meta">Kaydı giren: ${escapeHtml(userName(item.createdById))}</div>
       <div class="record-footer">
-        <button class="btn btn-secondary" type="button" onclick="window.__somPdf.exportReport('${item.id}')">PDF Al</button>
+        <button class="btn btn-secondary" type="button" onclick="event.stopPropagation(); window.__somActions.editReport('${item.id}')">Düzenle</button>
+        <button class="btn btn-secondary" type="button" onclick="event.stopPropagation(); window.__somPdf.exportReport('${item.id}')">PDF Al</button>
       </div>
     </article>
   `;
@@ -556,7 +578,7 @@ function renderReportRecord(item) {
 function renderPuantajRecord(item) {
   const present = item.workers.filter((worker) => worker.status === "present").length;
   return `
-    <article class="record-card">
+    <article class="record-card" onclick="window.__somActions.editPuantaj('${item.id}')">
       <div class="record-title">
         <strong>${escapeHtml(userName(item.createdById))}</strong>
         <span class="tag">${item.date}</span>
@@ -564,7 +586,8 @@ function renderPuantajRecord(item) {
       <div class="record-meta">${item.workers.length} kişi · ${present} geldi · ${item.workers.length - present} gelmedi</div>
       <p>${item.workers.map((worker) => `${escapeHtml(worker.name)} / ${escapeHtml(projectName(worker.projectId))} / ${escapeHtml(worker.job || "-")}`).join(", ")}</p>
       <div class="record-footer">
-        <button class="btn btn-secondary" type="button" onclick="window.__somPdf.exportPuantaj('${item.id}')">PDF Al</button>
+        <button class="btn btn-secondary" type="button" onclick="event.stopPropagation(); window.__somActions.editPuantaj('${item.id}')">Düzenle</button>
+        <button class="btn btn-secondary" type="button" onclick="event.stopPropagation(); window.__somPdf.exportPuantaj('${item.id}')">PDF Al</button>
       </div>
     </article>
   `;
@@ -572,7 +595,7 @@ function renderPuantajRecord(item) {
 
 function renderOrderCard(item) {
   return `
-    <article class="record-card">
+    <article class="record-card" onclick="window.__somActions.editOrder('${item.id}')">
       <div class="record-title">
         <strong>${escapeHtml(projectName(item.projectId))}</strong>
         <span class="tag">${item.date}</span>
@@ -583,8 +606,8 @@ function renderOrderCard(item) {
       <div class="record-meta">Kaynak: ${escapeHtml(item.priceSource || "-")} · Durum: ${escapeHtml(item.status || "-")}</div>
       ${item.note ? `<p>${escapeHtml(item.note)}</p>` : ""}
       <div class="record-footer">
-        <button class="btn btn-secondary" type="button" onclick="window.__somActions.editOrder('${item.id}')">Düzenle</button>
-        <button class="btn btn-secondary" type="button" onclick="window.__somPdf.exportOrder('${item.id}')">PDF Al</button>
+        <button class="btn btn-secondary" type="button" onclick="event.stopPropagation(); window.__somActions.editOrder('${item.id}')">Düzenle</button>
+        <button class="btn btn-secondary" type="button" onclick="event.stopPropagation(); window.__somPdf.exportOrder('${item.id}')">PDF Al</button>
       </div>
     </article>
   `;
@@ -594,8 +617,10 @@ async function onSaveReport(event) {
   event.preventDefault();
   if (!requireAuth() || !requireProjects()) return;
   const form = new FormData(els.reportForm);
+  const existingId = String(form.get("id") || "");
+  const existingReport = state.reports.find((item) => item.id === existingId);
   const payload = {
-    id: crypto.randomUUID(),
+    id: existingId || crypto.randomUUID(),
     projectId: form.get("projectId"),
     date: form.get("date"),
     workingHours: form.get("workingHours"),
@@ -603,16 +628,46 @@ async function onSaveReport(event) {
     nextPlan: form.get("nextPlan"),
     incident: form.get("incident"),
     notes: form.get("notes"),
-    createdById: state.currentUser.id,
-    createdAt: new Date().toISOString()
+    createdById: existingId ? (existingReport?.createdById || state.currentUser.id) : state.currentUser.id,
+    createdAt: existingId ? (existingReport?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+    updatedAt: existingId ? new Date().toISOString() : ""
   };
-  const remoteSaved = await sendToApi("saveReport", payload);
-  state.reports.push(payload);
+  const remoteSaved = await sendToApi(existingId ? "updateReport" : "saveReport", payload);
+  if (existingId) state.reports = state.reports.map((item) => item.id === existingId ? payload : item);
+  else state.reports.push(payload);
   persist(STORAGE_KEYS.reports, state.reports);
   renderAll();
-  els.reportForm.reset();
-  els.reportDate.value = todayStr();
+  resetReportForm();
   showToast(remoteSaved ? "Saha raporu kaydedildi." : "Saha raporu yerelde kaydedildi.");
+}
+
+function editReport(reportId) {
+  const report = state.reports.find((item) => item.id === reportId);
+  if (!report) return;
+  setView("report");
+  els.reportId.value = report.id;
+  els.reportProject.value = report.projectId;
+  els.reportDate.value = report.date || todayStr();
+  els.reportForm.elements.workingHours.value = report.workingHours || "";
+  els.reportForm.elements.workSummary.value = report.workSummary || "";
+  els.reportForm.elements.nextPlan.value = report.nextPlan || "";
+  els.reportForm.elements.incident.value = report.incident || "";
+  els.reportForm.elements.notes.value = report.notes || "";
+  els.reportSubmitBtn.textContent = "Raporu Güncelle";
+  els.reportCancelEditBtn.classList.remove("hidden");
+  els.reportForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function resetReportForm() {
+  els.reportForm.reset();
+  clearReportEditState();
+}
+
+function clearReportEditState() {
+  els.reportId.value = "";
+  els.reportDate.value = todayStr();
+  els.reportSubmitBtn.textContent = "Raporu Kaydet";
+  els.reportCancelEditBtn.classList.add("hidden");
 }
 
 function addWorker(worker = null) {
@@ -658,26 +713,47 @@ async function onSavePuantaj() {
   if (!requireAuth() || !requireProjects()) return;
   const workers = readWorkers();
   if (!workers.length) return showToast("Kaydetmek için en az bir personel girin.");
+  const existingId = String(els.puantajId.value || "");
+  const existingPuantaj = state.puantaj.find((item) => item.id === existingId);
   const payload = {
-    id: crypto.randomUUID(),
+    id: existingId || crypto.randomUUID(),
     date: els.puantajDate.value || todayStr(),
-    chiefId: state.currentUser.id,
-    createdById: state.currentUser.id,
-    createdAt: new Date().toISOString(),
+    chiefId: existingId ? (existingPuantaj?.chiefId || state.currentUser.id) : state.currentUser.id,
+    createdById: existingId ? (existingPuantaj?.createdById || state.currentUser.id) : state.currentUser.id,
+    createdAt: existingId ? (existingPuantaj?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+    updatedAt: existingId ? new Date().toISOString() : "",
     workers
   };
-  const remoteSaved = await sendToApi("savePuantaj", payload);
-  state.puantaj.push(payload);
+  const remoteSaved = await sendToApi(existingId ? "updatePuantaj" : "savePuantaj", payload);
+  if (existingId) state.puantaj = state.puantaj.map((item) => item.id === existingId ? payload : item);
+  else state.puantaj.push(payload);
   persist(STORAGE_KEYS.puantaj, state.puantaj);
   renderAll();
   resetPuantajForm();
   showToast(remoteSaved ? "Puantaj kaydedildi." : "Puantaj yerelde kaydedildi.");
 }
 
+function editPuantaj(puantajId) {
+  const item = state.puantaj.find((row) => row.id === puantajId);
+  if (!item) return;
+  setView("puantaj");
+  els.puantajId.value = item.id;
+  els.puantajDate.value = item.date || todayStr();
+  els.workerList.innerHTML = "";
+  (item.workers || []).forEach((worker) => addWorker(worker));
+  if (!item.workers?.length) addWorker();
+  els.savePuantajBtn.textContent = "Puantajı Güncelle";
+  els.puantajCancelEditBtn.classList.remove("hidden");
+  els.workerList.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function resetPuantajForm() {
+  els.puantajId.value = "";
   els.puantajDate.value = todayStr();
   els.workerList.innerHTML = "";
   addWorker();
+  els.savePuantajBtn.textContent = "Puantajı Kaydet";
+  els.puantajCancelEditBtn.classList.add("hidden");
 }
 
 function exportPuantajCsv() {
@@ -1475,12 +1551,43 @@ async function createPdfDoc(subject) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   doc.setProperties({ title: subject, subject, author: state.currentUser?.name || "Ayazlar Yapı" });
+  await registerPdfFonts(doc);
   try {
     doc.__logoDataUrl = await loadLogoDataUrl();
   } catch (error) {
     console.warn("Logo yüklenemedi.", error);
   }
   return doc;
+}
+
+async function registerPdfFonts(doc) {
+  try {
+    if (!pdfFontPromise) pdfFontPromise = Promise.all([loadPdfFont(PDF_FONT_FILES.normal), loadPdfFont(PDF_FONT_FILES.bold)]);
+    const [regular, bold] = await pdfFontPromise;
+    doc.addFileToVFS(PDF_FONT_FILES.normal.fileName, regular);
+    doc.addFont(PDF_FONT_FILES.normal.fileName, PDF_FONT_FAMILY, "normal");
+    doc.addFileToVFS(PDF_FONT_FILES.bold.fileName, bold);
+    doc.addFont(PDF_FONT_FILES.bold.fileName, PDF_FONT_FAMILY, "bold");
+    pdfFontFamily = PDF_FONT_FAMILY;
+    doc.setFont(pdfFontFamily, "normal");
+  } catch (error) {
+    console.warn("PDF fontu yüklenemedi, varsayılan font kullanılacak.", error);
+    pdfFontFamily = "helvetica";
+  }
+}
+
+async function loadPdfFont(fontFile) {
+  const response = await fetch(fontFile.url);
+  if (!response.ok) throw new Error(`Font yüklenemedi: ${fontFile.url}`);
+  return arrayBufferToBase64(await response.arrayBuffer());
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += chunkSize) binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  return window.btoa(binary);
 }
 
 async function addPdfHeader(doc, title, date, person, context, createdAt) {
@@ -1491,14 +1598,14 @@ async function addPdfHeader(doc, title, date, person, context, createdAt) {
     doc.addImage(doc.__logoDataUrl, "JPEG", 36, 44, 50, 50);
   }
   doc.setTextColor(26, 33, 56);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(pdfFontFamily, "bold");
   doc.setFontSize(17);
   doc.text(state.settings.companyName || "AYAZLAR YAPI", 98, 64);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(pdfFontFamily, "normal");
   doc.setFontSize(10);
   doc.setTextColor(90, 96, 115);
   doc.text("Şantiye Operasyon Merkezi", 98, 80);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(pdfFontFamily, "bold");
   doc.setFontSize(16);
   doc.setTextColor(36, 40, 52);
   doc.text(title, 36, 122);
@@ -1567,7 +1674,7 @@ function pdfSectionTable(doc, title, text, startY) {
 
 function pdfBaseStyles() {
   return {
-    font: "helvetica",
+    font: pdfFontFamily,
     fontSize: 10,
     cellPadding: 7,
     textColor: [46, 50, 62],
@@ -1626,6 +1733,8 @@ window.__somPdf = {
 };
 
 window.__somActions = {
+  editReport,
+  editPuantaj,
   editOrder
 };
 
