@@ -1,1 +1,1 @@
-Trigger monthly calendar layout fix retry after script correction.
+Trigger idempotent monthly calendar layout fix.
