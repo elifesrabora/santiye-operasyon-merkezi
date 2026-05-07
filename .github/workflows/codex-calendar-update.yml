@@ -1,0 +1,196 @@
+name: Codex Calendar Follow-up Update
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply calendar follow-up changes
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          def rep(s,a,b,label):
+            if a not in s: raise SystemExit(f'missing {label}')
+            return s.replace(a,b,1)
+          html=Path('index.html').read_text()
+          if 'class="calendar-layout"' not in html:
+            html=html.replace('<section><h3 class="section-title">Yaklaşan Görevler</h3><div class="records-list" id="project-detail-tasks"></div></section>','<section><h3 class="section-title">Takvim İşleri</h3><div class="records-list" id="project-detail-tasks"></div></section>')
+            start=html.index('<section class="view" id="view-calendar">')
+            end=html.index('      <section class="view" id="view-documents">', start)
+            cal='''<section class="view" id="view-calendar">
+        <div class="calendar-layout">
+          <div class="panel"><div class="panel-header"><div><div class="eyebrow">Planlama</div><h2>Takip Edilecek İş</h2></div><div class="header-actions"><button class="btn btn-secondary" type="button" id="notification-btn">Bildirim Aç</button></div></div>
+            <form id="task-form" class="panel-body form-grid"><input type="hidden" id="task-id" name="id"><div class="form-row cols-2"><label class="field"><span>Proje</span><select id="task-project" name="projectId"></select></label><label class="field"><span>Bilgiyi Giren</span><input type="text" id="task-author-label" readonly placeholder="Oturumdaki kullanıcı"><select id="task-assignee" name="assignedToId" class="hidden"></select></label></div><div class="form-row cols-2"><label class="field"><span>Takip Edilecek İş</span><input type="text" id="task-title" name="title" placeholder="Beton dökümü, sevkiyat, kontrol..."></label><label class="field"><span>Tarih</span><input type="date" id="task-date" name="dueDate"></label></div><input type="hidden" id="task-status" name="status" value="Planlandı"><label class="field"><span>Bilgi / Not</span><textarea id="task-note" name="note" rows="4" placeholder="Takip edilecek işle ilgili bilgi"></textarea></label><div class="form-actions"><button type="reset" class="btn btn-secondary">Temizle</button><button type="submit" class="btn btn-primary">Takibe Ekle</button></div><div class="info-card hidden" id="whatsapp-links"></div></form>
+          </div>
+          <div class="panel"><div class="panel-header"><div><div class="eyebrow">Bu Ay</div><h2>Takvim</h2></div></div><div class="panel-body"><div class="calendar-grid" id="calendar-grid"></div></div></div>
+        </div>
+        <div class="panel" style="margin-top: 16px;"><div class="panel-header"><div><div class="eyebrow">İş Takibi</div><h2>Takvim Kayıtları</h2></div></div><div class="panel-body"><div class="records-list" id="task-records"></div></div></div>
+      </section>
+
+'''
+            html=html[:start]+cal+html[end:]
+          if 'id="settings-whatsapp-numbers"' not in html:
+            html=rep(html,'<label class="field">\n              <span>Drive / Sheet Notu</span>\n              <textarea name="sheetNote" id="settings-sheet-note" rows="4" placeholder="Bağlı sheet linki, tablo isimleri veya kurulum notları..."></textarea>\n            </label>','<label class="field">\n              <span>Drive / Sheet Notu</span>\n              <textarea name="sheetNote" id="settings-sheet-note" rows="4" placeholder="Bağlı sheet linki, tablo isimleri veya kurulum notları..."></textarea>\n            </label>\n\n            <label class="field">\n              <span>WhatsApp Bildirim Numaraları</span>\n              <textarea name="whatsappNumbers" id="settings-whatsapp-numbers" rows="3" placeholder="905xxxxxxxxx, 905yyyyyyyyy"></textarea>\n            </label>','wa field')
+          Path('index.html').write_text(html)
+          js=Path('assets/scripts/app.js').read_text()
+          js=js.replace('sheetNote: "Ana Google Sheet: https://docs.google.com/spreadsheets/d/17WZGVKxZ2cfSxEGkLPRQazHNFU4iYBAqMDYy99ZfErM/edit?usp=sharing"\n};','sheetNote: "Ana Google Sheet: https://docs.google.com/spreadsheets/d/17WZGVKxZ2cfSxEGkLPRQazHNFU4iYBAqMDYy99ZfErM/edit?usp=sharing",\n  whatsappNumbers: ""\n};')
+          js=js.replace('calendar: ["Takvim", "Şantiye görevlerini tarihe, projeye ve kişiye göre planlayın."]','calendar: ["Takvim", "Takip edilecek işleri tarihe, projeye ve bilgi girişine göre izleyin."]')
+          if 'taskAuthorLabel: document.getElementById("task-author-label")' not in js:
+            js=rep(js,'taskAssignee: document.getElementById("task-assignee"),\n  taskRecords:','taskAssignee: document.getElementById("task-assignee"),\n  taskAuthorLabel: document.getElementById("task-author-label"),\n  taskRecords:','author el')
+          if 'whatsappLinks: document.getElementById("whatsapp-links")' not in js:
+            js=rep(js,'calendarGrid: document.getElementById("calendar-grid"),\n  notificationBtn:','calendarGrid: document.getElementById("calendar-grid"),\n  whatsappLinks: document.getElementById("whatsapp-links"),\n  notificationBtn:','wa el')
+          if 'settingsWhatsappNumbers: document.getElementById("settings-whatsapp-numbers")' not in js:
+            js=rep(js,'settingsSheetNote: document.getElementById("settings-sheet-note")','settingsSheetNote: document.getElementById("settings-sheet-note"),\n  settingsWhatsappNumbers: document.getElementById("settings-whatsapp-numbers")','settings wa')
+          if 'els.settingsWhatsappNumbers.value' not in js:
+            js=rep(js,'els.settingsSheetNote.value = state.settings.sheetNote;','els.settingsSheetNote.value = state.settings.sheetNote;\n  els.settingsWhatsappNumbers.value = state.settings.whatsappNumbers || "";','hydrate wa')
+          if 'els.taskAuthorLabel.value' not in js:
+            js=rep(js,'els.orderByLabel.value = user?.name || "";','els.orderByLabel.value = user?.name || "";\n  els.taskAuthorLabel.value = user?.name || "";','session author')
+          s=js.index('async function onSaveTask(event) {'); e=js.index('\n\nfunction renderCalendar() {',s)
+          js=js[:s]+'''async function onSaveTask(event) {
+  event.preventDefault();
+  if (!requireAuth() || !requireProjects()) return;
+  const form = new FormData(els.taskForm);
+  const title = String(form.get("title") || "").trim();
+  if (!title) return showToast("Takip edilecek iş gerekli.");
+  const payload = {
+    id: String(form.get("id") || "") || crypto.randomUUID(),
+    projectId: form.get("projectId"),
+    title,
+    assignedToId: state.currentUser.id,
+    dueDate: form.get("dueDate") || todayStr(),
+    status: "Planlandı",
+    note: form.get("note") || "",
+    createdById: state.currentUser.id,
+    createdAt: new Date().toISOString()
+  };
+  const remoteSaved = await sendToApi("saveTask", payload);
+  state.tasks.push(payload);
+  persist(STORAGE_KEYS.tasks, state.tasks);
+  renderAll();
+  els.taskForm.reset();
+  renderWhatsappLinks(payload);
+  showToast(remoteSaved ? "Takvim kaydı eklendi." : "Takvim kaydı yerelde tutuldu.");
+}'''+js[e:]
+          s=js.index('function renderCalendar() {'); e=js.index('\n\nfunction renderTaskCard(task) {',s)
+          js=js[:s]+'''function renderCalendar() {
+  if (!els.calendarGrid) return;
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month + 1, 0);
+  const blanks = (first.getDay() + 6) % 7;
+  const cells = [];
+  ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"].forEach((day) => {
+    cells.push(`<div class="calendar-head">${day}</div>`);
+  });
+  for (let i = 0; i < blanks; i += 1) cells.push('<div class="calendar-cell muted"></div>');
+  for (let day = 1; day <= last.getDate(); day += 1) {
+    const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const dayTasks = state.tasks.filter((task) => task.dueDate === date);
+    cells.push(`
+      <div class="calendar-cell ${date === todayStr() ? "today" : ""}">
+        <strong>${day}</strong>
+        ${dayTasks.slice(0, 4).map((task) => `<span title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</span>`).join("")}
+        ${dayTasks.length > 4 ? `<em>+${dayTasks.length - 4} kayıt</em>` : ""}
+      </div>
+    `);
+  }
+  els.calendarGrid.innerHTML = cells.join("");
+  els.taskRecords.innerHTML = state.tasks.length
+    ? state.tasks.slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate)).map(renderTaskCard).join("")
+    : emptyState("Henüz takvim kaydı yok.");
+  notifyDueTasks();
+}'''+js[e:]
+          s=js.index('function renderTaskCard(task) {'); e=js.index('\n\nasync function deleteDocument(documentId) {',s)
+          js=js[:s]+'''function renderTaskCard(task) {
+  return `
+    <article class="record-card">
+      <div class="record-title">
+        <strong>${escapeHtml(task.title)}</strong>
+        <span class="tag">${escapeHtml(task.dueDate || "-")}</span>
+      </div>
+      <div class="record-meta">${escapeHtml(projectName(task.projectId))} · Giren: ${escapeHtml(userName(task.createdById || task.assignedToId))} · ${escapeHtml(formatDateTime(task.createdAt))}</div>
+      <div class="record-meta">${escapeHtml(task.note || "-")}</div>
+    </article>
+  `;
+}
+
+function renderWhatsappLinks(task) {
+  if (!els.whatsappLinks) return;
+  const numbers = parseWhatsappNumbers(state.settings.whatsappNumbers);
+  if (!numbers.length) {
+    els.whatsappLinks.classList.remove("hidden");
+    els.whatsappLinks.innerHTML = "WhatsApp bildirimi için Ayarlar bölümüne bildirim numaralarını girin.";
+    return;
+  }
+  const message = buildWhatsappMessage(task);
+  els.whatsappLinks.classList.remove("hidden");
+  els.whatsappLinks.innerHTML = `
+    <strong>WhatsApp bildirimi hazır:</strong>
+    <div class="whatsapp-link-list">
+      ${numbers.map((number) => `<a class="btn btn-secondary" href="https://wa.me/${number}?text=${encodeURIComponent(message)}" target="_blank" rel="noreferrer">Gönder: ${escapeHtml(number)}</a>`).join("")}
+    </div>
+  `;
+}
+
+function parseWhatsappNumbers(value) {
+  return String(value || "")
+    .split(/[\s,;]+/)
+    .map((item) => item.replace(/\D/g, ""))
+    .filter((item) => item.length >= 10);
+}
+
+function buildWhatsappMessage(task) {
+  return [
+    "Ayazlar Yapı Takvim Bildirimi",
+    `Proje: ${projectName(task.projectId)}`,
+    `Tarih: ${task.dueDate || "-"}`,
+    `Takip edilecek iş: ${task.title}`,
+    `Bilgi: ${task.note || "-"}`,
+    `Giren: ${userName(task.createdById)}`,
+    `Kayıt zamanı: ${formatDateTime(task.createdAt)}`
+  ].join("\n");
+}'''+js[e:]
+          js=js.replace('sheetNote: els.settingsSheetNote.value.trim()\n  };','sheetNote: els.settingsSheetNote.value.trim(),\n    whatsappNumbers: els.settingsWhatsappNumbers.value.trim()\n  };')
+          js=js.replace('emptyState("Bu projeye ait görev yok.")','emptyState("Bu projeye ait takvim işi yok.")').replace('const openTasks = detail.tasks.filter((task) => task.status !== "Tamamlandı").length;','const openTasks = detail.tasks.length;').replace('<span>Açık Görev</span>','<span>Takvim İşi</span>').replace('new Notification("Şantiye görev hatırlatması", {\n    body: `${dueTasks.length} açık görev bugün veya geçmiş tarihte bekliyor.`','new Notification("Şantiye iş takibi", {\n    body: `${dueTasks.length} takip edilecek iş bugün veya geçmiş tarihte bekliyor.`')
+          Path('assets/scripts/app.js').write_text(js)
+          css=Path('assets/styles/main.css').read_text()
+          if '.calendar-layout {' not in css:
+            css=rep(css,'.panel-grid.two-up {\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n}','.panel-grid.two-up {\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n}\n\n.calendar-layout {\n  display: grid;\n  grid-template-columns: minmax(280px, 0.85fr) minmax(620px, 1.65fr);\n  gap: 16px;\n  align-items: start;\n}','css layout')
+          css=css.replace('.calendar-head, .calendar-cell { border: 1px solid var(--border); border-radius: 12px; min-height: 70px; padding: 10px; }','.calendar-head, .calendar-cell { border: 1px solid var(--border); border-radius: 12px; min-height: 118px; padding: 12px; }')
+          css=css.replace('.calendar-cell { display: grid; align-content: start; gap: 6px; background: rgba(255, 255, 255, 0.035); }','.calendar-cell { display: grid; align-content: start; gap: 7px; background: rgba(255, 255, 255, 0.035); }\n.calendar-cell strong { font-size: 18px; }')
+          css=css.replace('.calendar-cell span { display: block; border-radius: 999px; padding: 3px 7px; background: rgba(237, 28, 36, 0.18); color: var(--text); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }','.calendar-cell span { display: block; border-radius: 8px; padding: 5px 7px; background: rgba(237, 28, 36, 0.18); color: var(--text); font-size: 12px; line-height: 1.3; white-space: normal; overflow: hidden; text-overflow: ellipsis; }\n.calendar-cell em { color: var(--text-muted); font-size: 12px; font-style: normal; }\n.whatsapp-link-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }\n.calendar-layout .panel-body { overflow-x: auto; }')
+          css=css.replace('.kpi-grid,\n  .panel-grid.two-up,\n  .records-grid {\n    grid-template-columns: 1fr;\n  }','.kpi-grid,\n  .panel-grid.two-up,\n  .records-grid,\n  .calendar-layout {\n    grid-template-columns: 1fr;\n  }')
+          css=css.replace('.project-progress-strip,\n  .calendar-grid {\n    grid-template-columns: 1fr;\n  }','.project-progress-strip {\n    grid-template-columns: 1fr;\n  }\n\n  .calendar-grid {\n    min-width: 720px;\n  }')
+          Path('assets/styles/main.css').write_text(css)
+          PY
+      - name: Verify
+        run: |
+          node --check assets/scripts/app.js
+          ! grep -q '\\n' assets/styles/main.css
+          grep -q 'settings-whatsapp-numbers' index.html
+          grep -q 'renderWhatsappLinks' assets/scripts/app.js
+      - name: Commit changes
+        run: |
+          git config user.name "codex-update-bot"
+          git config user.email "codex-update-bot@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git add index.html assets/scripts/app.js assets/styles/main.css
+          git commit -m "Update calendar follow-up view"
+          git push
