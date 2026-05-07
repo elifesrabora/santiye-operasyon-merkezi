@@ -1,0 +1,30 @@
+name: Codex Fallback Login
+
+on:
+  push:
+    paths:
+      - '.codex-runs/fallback-login-2026-05-07.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply fallback login
+        run: node scripts/codex-fallback-login.js
+      - name: Verify JavaScript
+        run: node --check assets/scripts/app.js
+      - name: Commit changes
+        run: |
+          git config user.name "codex-bot"
+          git config user.email "codex-bot@users.noreply.github.com"
+          git add assets/scripts/app.js
+          git commit -m "Add fallback admin login for recovery"
+          git push
