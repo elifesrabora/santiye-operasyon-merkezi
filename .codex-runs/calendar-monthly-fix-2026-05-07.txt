@@ -1,1 +1,0 @@
-Trigger idempotent monthly calendar layout fix.
