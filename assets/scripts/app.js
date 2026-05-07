@@ -369,10 +369,24 @@ function normalizeUser(user) {
   };
 }
 
+function mergeUsersKeepingLocalSecrets(localUsers, remoteUsers) {
+  const localById = new Map((localUsers || []).map((user) => [user.id, user]));
+  const localByUsername = new Map((localUsers || []).map((user) => [String(user.username || "").toLowerCase(), user]));
+  return remoteUsers.map((remoteUser) => {
+    const normalized = normalizeUser(remoteUser);
+    const localMatch = localById.get(normalized.id) || localByUsername.get(String(normalized.username || "").toLowerCase());
+    if (!normalized.passwordHash && localMatch?.passwordHash) {
+      normalized.passwordHash = localMatch.passwordHash;
+    }
+    return normalized;
+  });
+}
+
 async function findMatchingUser(username, password) {
+  const loginName = String(username || "").trim().toLowerCase();
   const hashed = await sha256(password);
   return state.users.find((item) => {
-    if (item.username !== username || item.active === false) return false;
+    if (String(item.username || "").trim().toLowerCase() !== loginName || item.active === false) return false;
     const stored = String(item.passwordHash ?? "");
     if (!stored) return false;
     return stored === hashed || stored === password;
@@ -388,7 +402,11 @@ async function loginWithApi(username, password) {
       body: JSON.stringify({
         action: "login",
         token: state.settings.apiToken,
-        payload: { username, passwordHash: await sha256(password) }
+        payload: {
+          username: String(username || "").trim(),
+          password,
+          passwordHash: await sha256(password)
+        }
       })
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -1391,7 +1409,7 @@ async function syncFromApi(options = {}) {
     const payload = await response.json();
     state.projects = payload.projects || state.projects;
     if (Array.isArray(payload.users) && payload.users.length > 0) {
-      state.users = payload.users.map(normalizeUser);
+      state.users = mergeUsersKeepingLocalSecrets(state.users, payload.users);
     }
     state.reports = mergeById(state.reports, payload.reports);
     state.puantaj = mergeById(state.puantaj, payload.puantaj);

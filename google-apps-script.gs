@@ -129,12 +129,16 @@ function readUsers(includeSecrets) {
 }
 
 function loginUser(payload) {
-  const username = String(payload.username || "");
+  const username = String(payload.username || "").trim().toLowerCase();
+  const password = String(payload.password || "");
   const passwordHash = String(payload.passwordHash || "");
-  if (!username || !passwordHash) return null;
+  if (!username || (!passwordHash && !password)) return null;
 
   const user = readUsers(true).filter(function(item) {
-    return item.username === username && item.active !== false && item.passwordHash === passwordHash;
+    const stored = String(item.passwordHash || "");
+    return String(item.username || "").trim().toLowerCase() === username
+      && item.active !== false
+      && (stored === passwordHash || stored === password);
   })[0];
 
   if (!user) return null;
