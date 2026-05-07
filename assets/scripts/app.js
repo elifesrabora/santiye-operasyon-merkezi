@@ -14,7 +14,8 @@ const DEFAULT_SETTINGS = {
   apiBaseUrl: "https://script.google.com/macros/s/AKfycbxsGhQNPJLG2UpWBDr6iUntH_XPT2iSUukKvf2gttwTpwq2o-tYzloTja8HGEwLLLU5Cg/exec",
   apiToken: "AYAZLAR_SANTIYE_2026",
   companyName: "Ayazlar Yapı",
-  sheetNote: "Ana Google Sheet: https://docs.google.com/spreadsheets/d/17WZGVKxZ2cfSxEGkLPRQazHNFU4iYBAqMDYy99ZfErM/edit?usp=sharing"
+  sheetNote: "Ana Google Sheet: https://docs.google.com/spreadsheets/d/17WZGVKxZ2cfSxEGkLPRQazHNFU4iYBAqMDYy99ZfErM/edit?usp=sharing",
+  whatsappNumbers: ""
 };
 
 const state = {
@@ -54,7 +55,7 @@ const viewMeta = {
   puantaj: ["Puantaj", "Oturum açan kullanıcının adıyla günlük personel kaydı tutun."],
   orders: ["Siparişler", "Beton, demir ve diğer siparişlerin fiyat, kaynak ve giren kişi takibini yapın."],
   projects: ["Şantiyeler", "Projeleri ve kullanıcıları yönetin, proje bazlı toplu özetleri görün."],
-  calendar: ["Takvim", "Şantiye görevlerini tarihe, projeye ve kişiye göre planlayın."],
+  calendar: ["Takvim", "Takip edilecek işleri tarihe, projeye ve bilgi girişine göre izleyin."],
   documents: ["Evraklar", "Şantiyelere ait evrak linklerini ve notlarını tek merkezde tutun."],
   records: ["Kayıtlar", "Saha raporu, puantaj ve sipariş geçmişini bir arada inceleyin."],
   settings: ["Ayarlar", "GitHub Pages ve Google Sheets bağlantısını yönetin."]
@@ -145,8 +146,10 @@ const els = {
   taskForm: document.getElementById("task-form"),
   taskProject: document.getElementById("task-project"),
   taskAssignee: document.getElementById("task-assignee"),
+  taskAuthorLabel: document.getElementById("task-author-label"),
   taskRecords: document.getElementById("task-records"),
   calendarGrid: document.getElementById("calendar-grid"),
+  whatsappLinks: document.getElementById("whatsapp-links"),
   notificationBtn: document.getElementById("notification-btn"),
   documentForm: document.getElementById("document-form"),
   documentId: document.getElementById("document-id"),
@@ -172,7 +175,8 @@ const els = {
   settingsApiUrl: document.getElementById("settings-api-url"),
   settingsApiToken: document.getElementById("settings-api-token"),
   settingsCompanyName: document.getElementById("settings-company-name"),
-  settingsSheetNote: document.getElementById("settings-sheet-note")
+  settingsSheetNote: document.getElementById("settings-sheet-note"),
+  settingsWhatsappNumbers: document.getElementById("settings-whatsapp-numbers")
 };
 
 boot();
@@ -252,6 +256,7 @@ function hydrateForms() {
   els.settingsApiToken.value = state.settings.apiToken || "";
   els.settingsCompanyName.value = state.settings.companyName;
   els.settingsSheetNote.value = state.settings.sheetNote;
+  els.settingsWhatsappNumbers.value = state.settings.whatsappNumbers || "";
 }
 
 function renderAuthMode() {
@@ -348,6 +353,7 @@ function updateSessionUi() {
   els.sessionRole.textContent = roleLabel(user?.role || "");
   els.puantajChiefLabel.value = user?.name || "";
   els.orderByLabel.value = user?.name || "";
+  els.taskAuthorLabel.value = user?.name || "";
   const isAdmin = user?.role === "admin";
   els.userForm.closest(".panel").style.display = isAdmin ? "" : "none";
 }
@@ -1081,7 +1087,7 @@ function renderProjectDetail() {
     : emptyState("Bu projeye ait evrak yok.");
   els.projectDetailTasks.innerHTML = detail.tasks.length
     ? detail.tasks.map(renderTaskCard).join("")
-    : emptyState("Bu projeye ait görev yok.");
+    : emptyState("Bu projeye ait takvim işi yok.");
 }
 
 function getProjectDetailData(projectId) {
@@ -1163,7 +1169,7 @@ function renderProjectProgress(project, detail) {
   const end = project?.endDate || "";
   const elapsedPercent = projectDateProgress(start, end, today);
   const budgetPercent = detail.budgetUsage || 0;
-  const openTasks = detail.tasks.filter((task) => task.status !== "Tamamlandı").length;
+  const openTasks = detail.tasks.length;
   return `
     <div class="progress-metric">
       <span>Takvim İlerlemesi</span>
@@ -1178,7 +1184,7 @@ function renderProjectProgress(project, detail) {
       <small>${formatCurrency(detail.totalCost)} / ${formatCurrency(detail.budget)}</small>
     </div>
     <div class="progress-metric">
-      <span>Açık Görev</span>
+      <span>Takvim İşi</span>
       <strong>${openTasks}</strong>
       <div class="progress"><span style="width:${Math.min(100, openTasks * 20)}%"></span></div>
       <small>${detail.documents.length} evrak, ${detail.reports.length} rapor</small>
@@ -1200,14 +1206,14 @@ async function onSaveTask(event) {
   if (!requireAuth() || !requireProjects()) return;
   const form = new FormData(els.taskForm);
   const title = String(form.get("title") || "").trim();
-  if (!title) return showToast("Görev başlığı gerekli.");
+  if (!title) return showToast("Takip edilecek iş gerekli.");
   const payload = {
     id: String(form.get("id") || "") || crypto.randomUUID(),
     projectId: form.get("projectId"),
     title,
-    assignedToId: form.get("assignedToId"),
+    assignedToId: state.currentUser.id,
     dueDate: form.get("dueDate") || todayStr(),
-    status: form.get("status") || "Planlandı",
+    status: "Planlandı",
     note: form.get("note") || "",
     createdById: state.currentUser.id,
     createdAt: new Date().toISOString()
@@ -1217,7 +1223,8 @@ async function onSaveTask(event) {
   persist(STORAGE_KEYS.tasks, state.tasks);
   renderAll();
   els.taskForm.reset();
-  showToast(remoteSaved ? "Görev kaydedildi." : "Görev yerelde kaydedildi.");
+  renderWhatsappLinks(payload);
+  showToast(remoteSaved ? "Takvim kaydı eklendi." : "Takvim kaydı yerelde tutuldu.");
 }
 
 function renderCalendar() {
@@ -1239,14 +1246,15 @@ function renderCalendar() {
     cells.push(`
       <div class="calendar-cell ${date === todayStr() ? "today" : ""}">
         <strong>${day}</strong>
-        ${dayTasks.slice(0, 3).map((task) => `<span>${escapeHtml(task.title)}</span>`).join("")}
+        ${dayTasks.slice(0, 4).map((task) => `<span title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</span>`).join("")}
+        ${dayTasks.length > 4 ? `<em>+${dayTasks.length - 4} kayıt</em>` : ""}
       </div>
     `);
   }
   els.calendarGrid.innerHTML = cells.join("");
   els.taskRecords.innerHTML = state.tasks.length
     ? state.tasks.slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate)).map(renderTaskCard).join("")
-    : emptyState("Henüz görev yok.");
+    : emptyState("Henüz takvim kaydı yok.");
   notifyDueTasks();
 }
 
@@ -1255,121 +1263,49 @@ function renderTaskCard(task) {
     <article class="record-card">
       <div class="record-title">
         <strong>${escapeHtml(task.title)}</strong>
-        <span class="tag">${escapeHtml(task.status || "Planlandı")}</span>
+        <span class="tag">${escapeHtml(task.dueDate || "-")}</span>
       </div>
-      <div class="record-meta">${escapeHtml(projectName(task.projectId))} · ${escapeHtml(task.dueDate || "-")} · ${escapeHtml(userName(task.assignedToId))}</div>
+      <div class="record-meta">${escapeHtml(projectName(task.projectId))} · Giren: ${escapeHtml(userName(task.createdById || task.assignedToId))} · ${escapeHtml(formatDateTime(task.createdAt))}</div>
       <div class="record-meta">${escapeHtml(task.note || "-")}</div>
     </article>
   `;
 }
 
-async function onSaveDocument(event) {
-  event.preventDefault();
-  if (!requireAuth() || !requireProjects()) return;
-  const form = new FormData(els.documentForm);
-  const title = String(form.get("title") || "").trim();
-  if (!title) return showToast("Evrak adı gerekli.");
-  const existingId = String(form.get("id") || "");
-  const existingDocument = state.documents.find((item) => item.id === existingId);
-  const payload = {
-    id: existingId || crypto.randomUUID(),
-    projectId: form.get("projectId"),
-    title,
-    type: form.get("type") || "",
-    url: form.get("url") || "",
-    note: form.get("note") || "",
-    createdById: existingDocument?.createdById || state.currentUser.id,
-    createdAt: existingDocument?.createdAt || new Date().toISOString(),
-    updatedAt: existingId ? new Date().toISOString() : ""
-  };
-  const remoteSaved = await sendToApi(existingId ? "updateDocument" : "saveDocument", payload);
-  if (existingId) {
-    state.documents = state.documents.map((item) => item.id === existingId ? payload : item);
-  } else {
-    state.documents.push(payload);
+function renderWhatsappLinks(task) {
+  if (!els.whatsappLinks) return;
+  const numbers = parseWhatsappNumbers(state.settings.whatsappNumbers);
+  if (!numbers.length) {
+    els.whatsappLinks.classList.remove("hidden");
+    els.whatsappLinks.innerHTML = "WhatsApp bildirimi için Ayarlar bölümüne bildirim numaralarını girin.";
+    return;
   }
-  persist(STORAGE_KEYS.documents, state.documents);
-  renderAll();
-  resetDocumentForm();
-  showToast(remoteSaved ? "Evrak kaydedildi." : "Evrak yerelde kaydedildi.");
-}
-
-function renderDocuments() {
-  if (!els.documentRecords) return;
-  renderDocumentTypeOptions();
-  const projectFilter = els.documentProjectFilter.value || "all";
-  const typeFilter = els.documentTypeFilter.value || "all";
-  const filteredDocuments = state.documents.filter((item) => {
-    if (projectFilter !== "all" && item.projectId !== projectFilter) return false;
-    if (typeFilter !== "all" && normalizeDocumentType(item.type) !== typeFilter) return false;
-    return true;
-  });
-  els.documentRecords.innerHTML = filteredDocuments.length
-    ? filteredDocuments.slice().sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")).map(renderDocumentCard).join("")
-    : emptyState("Seçili filtrelere uygun evrak bulunamadı.");
-}
-
-function renderDocumentTypeOptions() {
-  if (!els.documentTypeFilter) return;
-  const current = els.documentTypeFilter.value || "all";
-  const types = [...new Map(DEFAULT_DOCUMENT_TYPES
-    .concat(state.documents.map((item) => String(item.type || "Evrak").trim()))
-    .filter(Boolean)
-    .map((type) => [normalizeDocumentType(type), type])).entries()]
-    .sort((a, b) => a[1].localeCompare(b[1], "tr-TR"));
-  els.documentTypeFilter.innerHTML = ['<option value="all">Tüm Evrak Türleri</option>']
-    .concat(types.map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`))
-    .join("");
-  els.documentTypeFilter.value = types.some(([value]) => value === current) ? current : "all";
-}
-
-function normalizeDocumentType(type) {
-  return String(type || "Evrak").trim().toLocaleLowerCase("tr-TR");
-}
-
-function renderDocumentCard(item) {
-  const link = item.url ? `<a class="btn btn-secondary" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation();">Aç</a>` : "";
-  return `
-    <article class="record-card" onclick="window.__somActions.editDocument('${item.id}')">
-      <div class="record-title">
-        <strong>${escapeHtml(item.title)}</strong>
-        <span class="tag">${escapeHtml(item.type || "Evrak")}</span>
-      </div>
-      <div class="record-meta">${escapeHtml(projectName(item.projectId))} · ${escapeHtml(formatDateTime(item.createdAt))}</div>
-      <div class="record-meta">${escapeHtml(item.note || "-")}</div>
-      <div class="record-footer">
-        <button class="btn btn-secondary" type="button" onclick="event.stopPropagation(); window.__somActions.editDocument('${item.id}')">Düzenle</button>
-        ${link}
-        <button class="btn btn-secondary" type="button" onclick="event.stopPropagation(); window.__somActions.deleteDocument('${item.id}')">Sil</button>
-      </div>
-    </article>
+  const message = buildWhatsappMessage(task);
+  els.whatsappLinks.classList.remove("hidden");
+  els.whatsappLinks.innerHTML = `
+    <strong>WhatsApp bildirimi hazır:</strong>
+    <div class="whatsapp-link-list">
+      ${numbers.map((number) => `<a class="btn btn-secondary" href="https://wa.me/${number}?text=${encodeURIComponent(message)}" target="_blank" rel="noreferrer">Gönder: ${escapeHtml(number)}</a>`).join("")}
+    </div>
   `;
 }
 
-function editDocument(documentId) {
-  const item = state.documents.find((documentItem) => documentItem.id === documentId);
-  if (!item) return;
-  setView("documents");
-  els.documentId.value = item.id;
-  els.documentProject.value = item.projectId || "";
-  els.documentTitle.value = item.title || "";
-  els.documentType.value = item.type || "Rapor";
-  els.documentUrl.value = item.url || "";
-  els.documentNote.value = item.note || "";
-  els.documentSubmitBtn.textContent = "Evrakı Güncelle";
-  els.documentCancelEditBtn.classList.remove("hidden");
-  els.documentForm.scrollIntoView({ behavior: "smooth", block: "start" });
+function parseWhatsappNumbers(value) {
+  return String(value || "")
+    .split(/[\s,;]+/)
+    .map((item) => item.replace(/\D/g, ""))
+    .filter((item) => item.length >= 10);
 }
 
-function resetDocumentForm() {
-  els.documentForm.reset();
-  clearDocumentEditState();
-}
-
-function clearDocumentEditState() {
-  els.documentId.value = "";
-  els.documentSubmitBtn.textContent = "Evrakı Kaydet";
-  els.documentCancelEditBtn.classList.add("hidden");
+function buildWhatsappMessage(task) {
+  return [
+    "Ayazlar Yapı Takvim Bildirimi",
+    `Proje: ${projectName(task.projectId)}`,
+    `Tarih: ${task.dueDate || "-"}`,
+    `Takip edilecek iş: ${task.title}`,
+    `Bilgi: ${task.note || "-"}`,
+    `Giren: ${userName(task.createdById)}`,
+    `Kayıt zamanı: ${formatDateTime(task.createdAt)}`
+  ].join("\n");
 }
 
 async function deleteDocument(documentId) {
@@ -1396,8 +1332,8 @@ function notifyDueTasks(force = false) {
   if (!dueTasks.length) return;
   const key = `som_notified_${todayStr()}`;
   if (!force && localStorage.getItem(key)) return;
-  new Notification("Şantiye görev hatırlatması", {
-    body: `${dueTasks.length} açık görev bugün veya geçmiş tarihte bekliyor.`
+  new Notification("Şantiye iş takibi", {
+    body: `${dueTasks.length} takip edilecek iş bugün veya geçmiş tarihte bekliyor.`
   });
   localStorage.setItem(key, "1");
 }
@@ -1424,7 +1360,8 @@ function onSaveSettings(event) {
     apiBaseUrl: els.settingsApiUrl.value.trim(),
     apiToken: els.settingsApiToken.value.trim(),
     companyName: els.settingsCompanyName.value.trim(),
-    sheetNote: els.settingsSheetNote.value.trim()
+    sheetNote: els.settingsSheetNote.value.trim(),
+    whatsappNumbers: els.settingsWhatsappNumbers.value.trim()
   };
   state.apiHealth = "unknown";
   persist(STORAGE_KEYS.settings, state.settings);
