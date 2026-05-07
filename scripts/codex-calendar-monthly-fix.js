@@ -1,9 +1,11 @@
 const fs = require('fs');
 
+function read(file) { return fs.readFileSync(file, 'utf8'); }
+function write(file, text) { fs.writeFileSync(file, text); }
 function replaceOnce(file, before, after) {
-  const text = fs.readFileSync(file, 'utf8');
+  const text = read(file);
   if (!text.includes(before)) throw new Error(`Pattern not found in ${file}: ${before.slice(0, 120)}`);
-  fs.writeFileSync(file, text.replace(before, after));
+  write(file, text.replace(before, after));
 }
 
 replaceOnce('index.html',
@@ -27,183 +29,67 @@ replaceOnce('index.html',
               <div class="calendar-grid" id="calendar-grid"></div>
             </div>`);
 
-replaceOnce('assets/scripts/app.js',
-`  apiHealth: "unknown",
-  selectedProjectId: null,
-  currentUser: loadJson(STORAGE_KEYS.session, null),`,
-`  apiHealth: "unknown",
-  selectedProjectId: null,
-  calendarDate: new Date(),
-  currentUser: loadJson(STORAGE_KEYS.session, null),`);
+let app = read('assets/scripts/app.js');
+app = app.replace('  apiHealth: "unknown",\n  selectedProjectId: null,\n  currentUser: loadJson(STORAGE_KEYS.session, null),', '  apiHealth: "unknown",\n  selectedProjectId: null,\n  calendarDate: new Date(),\n  currentUser: loadJson(STORAGE_KEYS.session, null),');
+app = app.replace('  taskRecords: document.getElementById("task-records"),\n  calendarGrid: document.getElementById("calendar-grid"),\n  whatsappLinks: document.getElementById("whatsapp-links"),', '  taskRecords: document.getElementById("task-records"),\n  calendarTitle: document.getElementById("calendar-title"),\n  calendarGrid: document.getElementById("calendar-grid"),\n  calendarPrevBtn: document.getElementById("calendar-prev-btn"),\n  calendarTodayBtn: document.getElementById("calendar-today-btn"),\n  calendarNextBtn: document.getElementById("calendar-next-btn"),\n  whatsappLinks: document.getElementById("whatsapp-links"),');
+app = app.replace('  els.taskForm.addEventListener("submit", onSaveTask);\n  els.documentForm.addEventListener("submit", onSaveDocument);', '  els.taskForm.addEventListener("submit", onSaveTask);\n  els.calendarPrevBtn.addEventListener("click", () => changeCalendarMonth(-1));\n  els.calendarTodayBtn.addEventListener("click", () => {\n    state.calendarDate = new Date();\n    renderCalendar();\n  });\n  els.calendarNextBtn.addEventListener("click", () => changeCalendarMonth(1));\n  els.documentForm.addEventListener("submit", onSaveDocument);');
+app = app.replace('  const remoteSaved = await sendToApi("saveTask", payload);\n  state.tasks.push(payload);\n  persist(STORAGE_KEYS.tasks, state.tasks);\n  renderAll();\n  els.taskForm.reset();\n  renderWhatsappLinks(payload);', '  const remoteSaved = await sendToApi("saveTask", payload);\n  state.tasks.push(payload);\n  persist(STORAGE_KEYS.tasks, state.tasks);\n  state.calendarDate = new Date(`${payload.dueDate}T12:00:00`);\n  renderAll();\n  els.taskForm.reset();\n  renderWhatsappLinks(payload);');
+const start = app.indexOf('function renderCalendar() {');
+const end = app.indexOf('function renderTaskCard(task) {');
+if (start === -1 || end === -1 || end <= start) throw new Error('renderCalendar block not found');
+const calendarBlock = [
+'function changeCalendarMonth(offset) {',
+'  const base = state.calendarDate instanceof Date ? state.calendarDate : new Date();',
+'  state.calendarDate = new Date(base.getFullYear(), base.getMonth() + offset, 1);',
+'  renderCalendar();',
+'}',
+'',
+'function renderCalendar() {',
+'  if (!els.calendarGrid) return;',
+'  const now = state.calendarDate instanceof Date ? state.calendarDate : new Date();',
+'  const year = now.getFullYear();',
+'  const month = now.getMonth();',
+'  const first = new Date(year, month, 1);',
+'  const last = new Date(year, month + 1, 0);',
+'  const blanks = (first.getDay() + 6) % 7;',
+'  if (els.calendarTitle) {',
+'    els.calendarTitle.textContent = new Intl.DateTimeFormat("tr-TR", { month: "long", year: "numeric" }).format(first);',
+'  }',
+'  const cells = [];',
+'  ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"].forEach((day) => {',
+'    cells.push(`<div class="calendar-head">${day}</div>`);',
+'  });',
+'  for (let i = 0; i < blanks; i += 1) cells.push(\'<div class="calendar-cell muted"></div>\');',
+'  for (let day = 1; day <= last.getDate(); day += 1) {',
+'    const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;',
+'    const dayTasks = state.tasks.filter((task) => task.dueDate === date);',
+'    cells.push(`',
+'      <div class="calendar-cell ${date === todayStr() ? "today" : ""}">',
+'        <div class="calendar-day-number">${day}</div>',
+'        ${dayTasks.slice(0, 4).map((task) => `<span title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</span>`).join("")}',
+'        ${dayTasks.length > 4 ? `<em>+${dayTasks.length - 4} kayıt</em>` : ""}',
+'      </div>',
+'    `);',
+'  }',
+'  els.calendarGrid.innerHTML = cells.join("");',
+'  els.taskRecords.innerHTML = state.tasks.length',
+'    ? state.tasks.slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate)).map(renderTaskCard).join("")',
+'    : emptyState("Henüz takvim kaydı yok.");',
+'  notifyDueTasks();',
+'}',
+'',
+].join('\n');
+app = app.slice(0, start) + calendarBlock + app.slice(end);
+write('assets/scripts/app.js', app);
 
-replaceOnce('assets/scripts/app.js',
-`  taskRecords: document.getElementById("task-records"),
-  calendarGrid: document.getElementById("calendar-grid"),
-  whatsappLinks: document.getElementById("whatsapp-links"),`,
-`  taskRecords: document.getElementById("task-records"),
-  calendarTitle: document.getElementById("calendar-title"),
-  calendarGrid: document.getElementById("calendar-grid"),
-  calendarPrevBtn: document.getElementById("calendar-prev-btn"),
-  calendarTodayBtn: document.getElementById("calendar-today-btn"),
-  calendarNextBtn: document.getElementById("calendar-next-btn"),
-  whatsappLinks: document.getElementById("whatsapp-links"),`);
-
-replaceOnce('assets/scripts/app.js',
-`  els.taskForm.addEventListener("submit", onSaveTask);
-  els.documentForm.addEventListener("submit", onSaveDocument);`,
-`  els.taskForm.addEventListener("submit", onSaveTask);
-  els.calendarPrevBtn.addEventListener("click", () => changeCalendarMonth(-1));
-  els.calendarTodayBtn.addEventListener("click", () => {
-    state.calendarDate = new Date();
-    renderCalendar();
-  });
-  els.calendarNextBtn.addEventListener("click", () => changeCalendarMonth(1));
-  els.documentForm.addEventListener("submit", onSaveDocument);`);
-
-replaceOnce('assets/scripts/app.js',
-`  const remoteSaved = await sendToApi("saveTask", payload);
-  state.tasks.push(payload);
-  persist(STORAGE_KEYS.tasks, state.tasks);
-  renderAll();
-  els.taskForm.reset();
-  renderWhatsappLinks(payload);`,
-`  const remoteSaved = await sendToApi("saveTask", payload);
-  state.tasks.push(payload);
-  persist(STORAGE_KEYS.tasks, state.tasks);
-  state.calendarDate = new Date(`${payload.dueDate}T12:00:00`);
-  renderAll();
-  els.taskForm.reset();
-  renderWhatsappLinks(payload);`);
-
-replaceOnce('assets/scripts/app.js',
-`function renderCalendar() {
-  if (!els.calendarGrid) return;
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const first = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
-  const blanks = (first.getDay() + 6) % 7;
-  const cells = [];`,
-`function changeCalendarMonth(offset) {
-  const base = state.calendarDate instanceof Date ? state.calendarDate : new Date();
-  state.calendarDate = new Date(base.getFullYear(), base.getMonth() + offset, 1);
-  renderCalendar();
-}
-
-function renderCalendar() {
-  if (!els.calendarGrid) return;
-  const now = state.calendarDate instanceof Date ? state.calendarDate : new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const first = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
-  const blanks = (first.getDay() + 6) % 7;
-  if (els.calendarTitle) {
-    els.calendarTitle.textContent = new Intl.DateTimeFormat("tr-TR", { month: "long", year: "numeric" }).format(first);
-  }
-  const cells = [];`);
-
-replaceOnce('assets/scripts/app.js',
-`      <div class="calendar-cell ${date === todayStr() ? "today" : ""}">
-        <strong>${day}</strong>
-        ${dayTasks.slice(0, 4).map((task) => `<span title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</span>`).join("")}`, 
-`      <div class="calendar-cell ${date === todayStr() ? "today" : ""}">
-        <div class="calendar-day-number">${day}</div>
-        ${dayTasks.slice(0, 4).map((task) => `<span title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</span>`).join("")}`);
-
-replaceOnce('assets/styles/main.css',
-`.calendar-layout {
-  display: grid;
-  grid-template-columns: minmax(280px, 0.85fr) minmax(620px, 1.65fr);
-  gap: 16px;
-  align-items: start;
-}`,
-`.calendar-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}`);
-
-replaceOnce('assets/styles/main.css',
-`.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
-}`,
-`.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 10px;
-  min-width: 860px;
-}`);
-
-replaceOnce('assets/styles/main.css',
-`.calendar-head,
-.calendar-cell {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  min-height: 118px;
-  padding: 12px;
-}`,
-`.calendar-head,
-.calendar-cell {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-
-.calendar-cell {
-  min-height: 150px;
-  padding: 14px;
-}`);
-
-replaceOnce('assets/styles/main.css',
-`.calendar-cell strong {
-  font-size: 18px;
-}`,
-`.calendar-day-number {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  font-size: 18px;
-  font-weight: 800;
-  background: rgba(255, 255, 255, 0.06);
-}`);
-
-replaceOnce('assets/styles/main.css',
-`.calendar-cell.today {
-  border-color: var(--accent-2);
-}`,
-`.calendar-cell.today {
-  border-color: var(--accent-2);
-  background: rgba(237, 28, 36, 0.1);
-}`);
-
-replaceOnce('assets/styles/main.css',
-`.calendar-cell span {
-  display: block;
-  border-radius: 8px;
-  padding: 5px 7px;
-  background: rgba(237, 28, 36, 0.18);
-  color: var(--text);
-  font-size: 12px;`,
-`.calendar-cell span {
-  display: block;
-  border-radius: 8px;
-  padding: 7px 8px;
-  background: rgba(237, 28, 36, 0.18);
-  color: var(--text);
-  font-size: 13px;`);
-
-replaceOnce('assets/styles/main.css',
-`  .calendar-grid {
-    min-width: 720px;
-  }`,
-`  .calendar-grid {
-    min-width: 760px;
-  }`);
+let css = read('assets/styles/main.css');
+css = css.replace('grid-template-columns: minmax(280px, 0.85fr) minmax(620px, 1.65fr);', 'grid-template-columns: minmax(0, 1fr);');
+css = css.replace('.calendar-grid {\n  display: grid;\n  grid-template-columns: repeat(7, minmax(0, 1fr));\n  gap: 8px;\n}', '.calendar-grid {\n  display: grid;\n  grid-template-columns: repeat(7, minmax(0, 1fr));\n  gap: 10px;\n  min-width: 860px;\n}');
+css = css.replace('.calendar-head,\n.calendar-cell {\n  border: 1px solid var(--border);\n  border-radius: 12px;\n  min-height: 118px;\n  padding: 12px;\n}', '.calendar-head,\n.calendar-cell {\n  border: 1px solid var(--border);\n  border-radius: 12px;\n}\n\n.calendar-cell {\n  min-height: 150px;\n  padding: 14px;\n}');
+css = css.replace('.calendar-cell strong {\n  font-size: 18px;\n}', '.calendar-day-number {\n  width: 32px;\n  height: 32px;\n  display: grid;\n  place-items: center;\n  border-radius: 999px;\n  font-size: 18px;\n  font-weight: 800;\n  background: rgba(255, 255, 255, 0.06);\n}');
+css = css.replace('.calendar-cell.today {\n  border-color: var(--accent-2);\n}', '.calendar-cell.today {\n  border-color: var(--accent-2);\n  background: rgba(237, 28, 36, 0.1);\n}');
+css = css.replace('padding: 5px 7px;\n  background: rgba(237, 28, 36, 0.18);\n  color: var(--text);\n  font-size: 12px;', 'padding: 7px 8px;\n  background: rgba(237, 28, 36, 0.18);\n  color: var(--text);\n  font-size: 13px;');
+css = css.replace('  .calendar-grid {\n    min-width: 720px;\n  }', '  .calendar-grid {\n    min-width: 760px;\n  }');
+write('assets/styles/main.css', css);
 
 console.log('Monthly calendar layout fix applied.');
