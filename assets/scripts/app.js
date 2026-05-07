@@ -31,6 +31,7 @@ const state = {
   currentView: "dashboard",
   apiHealth: "unknown",
   selectedProjectId: null,
+  calendarDate: new Date(),
   currentUser: loadJson(STORAGE_KEYS.session, null),
   settings: loadJson(STORAGE_KEYS.settings, DEFAULT_SETTINGS),
   projects: loadJson(STORAGE_KEYS.projects, []),
@@ -157,7 +158,11 @@ const els = {
   taskAssignee: document.getElementById("task-assignee"),
   taskAuthorLabel: document.getElementById("task-author-label"),
   taskRecords: document.getElementById("task-records"),
+  calendarTitle: document.getElementById("calendar-title"),
   calendarGrid: document.getElementById("calendar-grid"),
+  calendarPrevBtn: document.getElementById("calendar-prev-btn"),
+  calendarTodayBtn: document.getElementById("calendar-today-btn"),
+  calendarNextBtn: document.getElementById("calendar-next-btn"),
   whatsappLinks: document.getElementById("whatsapp-links"),
   notificationBtn: document.getElementById("notification-btn"),
   documentForm: document.getElementById("document-form"),
@@ -238,6 +243,12 @@ function bindAppEvents() {
   els.projectForm.addEventListener("submit", onSaveProject);
   els.userForm.addEventListener("submit", onSaveUser);
   els.taskForm.addEventListener("submit", onSaveTask);
+  els.calendarPrevBtn.addEventListener("click", () => changeCalendarMonth(-1));
+  els.calendarTodayBtn.addEventListener("click", () => {
+    state.calendarDate = new Date();
+    renderCalendar();
+  });
+  els.calendarNextBtn.addEventListener("click", () => changeCalendarMonth(1));
   els.documentForm.addEventListener("submit", onSaveDocument);
   els.documentForm.addEventListener("reset", () => window.setTimeout(clearDocumentEditState, 0));
   els.documentCancelEditBtn.addEventListener("click", resetDocumentForm);
@@ -1248,20 +1259,30 @@ async function onSaveTask(event) {
   const remoteSaved = await sendToApi("saveTask", payload);
   state.tasks.push(payload);
   persist(STORAGE_KEYS.tasks, state.tasks);
+  state.calendarDate = new Date(`${payload.dueDate}T12:00:00`);
   renderAll();
   els.taskForm.reset();
   renderWhatsappLinks(payload);
   showToast(remoteSaved ? "Takvim kaydı eklendi." : "Takvim kaydı yerelde tutuldu.");
 }
 
+function changeCalendarMonth(offset) {
+  const base = state.calendarDate instanceof Date ? state.calendarDate : new Date();
+  state.calendarDate = new Date(base.getFullYear(), base.getMonth() + offset, 1);
+  renderCalendar();
+}
+
 function renderCalendar() {
   if (!els.calendarGrid) return;
-  const now = new Date();
+  const now = state.calendarDate instanceof Date ? state.calendarDate : new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
   const first = new Date(year, month, 1);
   const last = new Date(year, month + 1, 0);
   const blanks = (first.getDay() + 6) % 7;
+  if (els.calendarTitle) {
+    els.calendarTitle.textContent = new Intl.DateTimeFormat("tr-TR", { month: "long", year: "numeric" }).format(first);
+  }
   const cells = [];
   ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"].forEach((day) => {
     cells.push(`<div class="calendar-head">${day}</div>`);
@@ -1272,7 +1293,7 @@ function renderCalendar() {
     const dayTasks = state.tasks.filter((task) => task.dueDate === date);
     cells.push(`
       <div class="calendar-cell ${date === todayStr() ? "today" : ""}">
-        <strong>${day}</strong>
+        <div class="calendar-day-number">${day}</div>
         ${dayTasks.slice(0, 4).map((task) => `<span title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</span>`).join("")}
         ${dayTasks.length > 4 ? `<em>+${dayTasks.length - 4} kayıt</em>` : ""}
       </div>
@@ -1284,7 +1305,6 @@ function renderCalendar() {
     : emptyState("Henüz takvim kaydı yok.");
   notifyDueTasks();
 }
-
 function renderTaskCard(task) {
   return `
     <article class="record-card">
