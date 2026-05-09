@@ -41,6 +41,7 @@ Apps Script `setup` çalışınca şu sekmeleri oluşturur:
 
 - `projects`
 - `sites`
+- `tasks`
 - `reports`
 - `payments`
 - `personnel`
@@ -63,6 +64,16 @@ Apps Script `setup` çalışınca şu sekmeleri oluşturur:
 - Cloudflare Access ile GitHub Pages önünde giriş ekranı
 
 Sadece statik GitHub Pages üzerinde güvenli parola kontrolü yapmak doğru değildir; kullanıcı izinlerini gerçekten güvenli yapmak için backend tarafında kimlik doğrulama gerekir.
+
+## Ayazlar Excel aktarımı
+
+`/Users/elifesrabora/Downloads/ayazlarapp.xlsx` dosyasındaki verileri mevcut Google Sheet'e aktarmak için:
+
+```bash
+/Users/elifesrabora/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/import_ayazlarapp.py
+```
+
+İlk canlı Apps Script sürümü `tasks` tablosunu bilmediği için görevler ancak `apps-script/Code.gs` güncel haliyle tekrar dağıtıldıktan sonra aktarılır.
 
 ## Yerel deneme
 

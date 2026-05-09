@@ -7,23 +7,27 @@ const CONFIG = {
 };
 
 const TABLES = {
-  projects: ["name", "client", "startDate", "endDate", "status", "notes"],
+  projects: ["name", "client", "location", "startDate", "endDate", "budget", "status", "notes"],
   sites: ["projectId", "name", "location", "manager", "status"],
-  reports: ["projectId", "siteId", "date", "workDone", "notes"],
+  tasks: ["projectId", "title", "assignedTo", "dueDate", "status", "notes"],
+  reports: ["projectId", "siteId", "date", "workingHours", "workDone", "nextPlan", "incident", "notes", "attachmentName", "attachmentUrl"],
   payments: ["projectId", "period", "amount", "status", "notes"],
-  personnel: ["projectId", "siteId", "date", "name", "attendance"],
-  materials: ["projectId", "name", "quantity", "unit", "minimum", "status"],
-  documents: ["projectId", "siteId", "title", "fileName", "fileUrl", "mimeType", "notes"],
+  personnel: ["projectId", "siteId", "date", "name", "job", "attendance"],
+  materials: ["projectId", "date", "name", "spec", "quantity", "unit", "supplier", "unitPrice", "total", "minimum", "status", "notes"],
+  documents: ["projectId", "siteId", "title", "type", "fileName", "fileUrl", "mimeType", "notes"],
+  users: ["name", "username", "email", "role", "status", "permissions"],
 };
 
 const TABLE_LABELS = {
-  projects: ["Proje", "İşveren", "Başlangıç", "Bitiş", "Durum", "Not"],
+  projects: ["Proje", "İşveren", "Konum", "Başlangıç", "Bitiş", "Bütçe", "Durum", "Not"],
   sites: ["Proje", "Şantiye", "Konum", "Şef", "Durum"],
-  reports: ["Proje", "Şantiye", "Tarih", "Yapılan işler", "Not"],
+  tasks: ["Proje", "Görev", "Atanan", "Termin", "Durum", "Not"],
+  reports: ["Proje", "Şantiye", "Tarih", "Saat", "Yapılan işler", "Sonraki plan", "Olay", "Not", "Ek", "Bağlantı"],
   payments: ["Proje", "Dönem", "Tutar", "Durum", "Not"],
-  personnel: ["Proje", "Şantiye", "Tarih", "Personel", "Durum"],
-  materials: ["Proje", "Malzeme", "Miktar", "Birim", "Minimum", "Durum"],
-  documents: ["Proje", "Şantiye", "Başlık", "Dosya", "Bağlantı", "Tür", "Açıklama"],
+  personnel: ["Proje", "Şantiye", "Tarih", "Personel", "Meslek", "Durum"],
+  materials: ["Proje", "Tarih", "Malzeme", "Özellik", "Miktar", "Birim", "Tedarikçi", "Birim fiyat", "Toplam", "Minimum", "Durum", "Not"],
+  documents: ["Proje", "Şantiye", "Başlık", "Tür", "Dosya", "Bağlantı", "Mime", "Açıklama"],
+  users: ["Ad", "Kullanıcı", "E-posta", "Rol", "Durum", "İzinler"],
 };
 
 let state = loadState();
@@ -133,8 +137,12 @@ async function formToRecord(form, table) {
   };
 
   for (const field of TABLES[table]) {
-    if (field === "fileName" || field === "fileUrl" || field === "mimeType") continue;
+    if (field === "fileName" || field === "mimeType") continue;
     record[field] = formData.get(field)?.toString().trim() || "";
+  }
+
+  if (table === "materials" && !record.total && record.quantity && record.unitPrice) {
+    record.total = String(Number(record.quantity) * Number(record.unitPrice));
   }
 
   if (table === "documents") {
@@ -143,7 +151,7 @@ async function formToRecord(form, table) {
       record.fileName = file.name;
       record.mimeType = file.type;
       record.fileData = await fileToBase64(file);
-      record.fileUrl = "";
+      record.fileUrl = record.fileUrl || "";
     }
   }
 
@@ -171,7 +179,7 @@ function render() {
 
 function filtered(table) {
   const projectId = document.getElementById("projectFilter").value;
-  if (!projectId || table === "projects") return state[table];
+  if (!projectId || table === "projects" || table === "users") return state[table];
   return state[table].filter((item) => item.projectId === projectId);
 }
 
@@ -246,11 +254,13 @@ function singular(table) {
   return {
     projects: "project",
     sites: "site",
+    tasks: "task",
     reports: "report",
     payments: "payment",
     personnel: "personnel",
     materials: "material",
     documents: "document",
+    users: "user",
   }[table];
 }
 
@@ -276,8 +286,11 @@ function formatCell(table, field, value, row) {
   if (field === "siteId") return escapeHtml(siteName(value));
   if (field === "status" || field === "attendance") return `<span class="status">${escapeHtml(value || "-")}</span>`;
   if (field === "amount") return formatCurrency(Number(value || 0));
+  if (field === "budget" || field === "unitPrice" || field === "total") return value ? formatCurrency(Number(value || 0)) : "-";
   if (field === "fileUrl" && row.fileUrl) return `<a href="${escapeHtml(row.fileUrl)}" target="_blank" rel="noreferrer">Aç</a>`;
   if (field === "fileUrl") return "-";
+  if (field === "attachmentUrl" && row.attachmentUrl) return `<a href="${escapeHtml(row.attachmentUrl)}" target="_blank" rel="noreferrer">Aç</a>`;
+  if (field === "attachmentUrl") return "-";
   return escapeHtml(value || "-");
 }
 

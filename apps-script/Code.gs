@@ -2,14 +2,15 @@ const DEFAULT_SPREADSHEET_ID = "1brBxxE6agOvAhTSp26nkN7NrtoWRyQygce5sRcE3ZyI";
 const DEFAULT_DRIVE_FOLDER_ID = "1kay5Ri3t_vLbRMuG22_tXslRsmwk4lg4";
 
 const SCHEMA = {
-  projects: ["id", "createdAt", "createdBy", "name", "client", "startDate", "endDate", "status", "notes"],
+  projects: ["id", "createdAt", "createdBy", "name", "client", "startDate", "endDate", "status", "notes", "location", "budget"],
   sites: ["id", "createdAt", "createdBy", "projectId", "name", "location", "manager", "status"],
-  reports: ["id", "createdAt", "createdBy", "projectId", "siteId", "date", "workDone", "notes"],
+  tasks: ["id", "createdAt", "createdBy", "projectId", "title", "assignedTo", "dueDate", "status", "notes"],
+  reports: ["id", "createdAt", "createdBy", "projectId", "siteId", "date", "workDone", "notes", "workingHours", "nextPlan", "incident", "attachmentName", "attachmentUrl"],
   payments: ["id", "createdAt", "createdBy", "projectId", "period", "amount", "status", "notes"],
-  personnel: ["id", "createdAt", "createdBy", "projectId", "siteId", "date", "name", "attendance"],
-  materials: ["id", "createdAt", "createdBy", "projectId", "name", "quantity", "unit", "minimum", "status"],
-  documents: ["id", "createdAt", "createdBy", "projectId", "siteId", "title", "fileName", "fileUrl", "mimeType", "notes"],
-  users: ["email", "name", "role", "status", "permissions"],
+  personnel: ["id", "createdAt", "createdBy", "projectId", "siteId", "date", "name", "attendance", "job"],
+  materials: ["id", "createdAt", "createdBy", "projectId", "name", "quantity", "unit", "minimum", "status", "date", "spec", "supplier", "unitPrice", "total", "notes"],
+  documents: ["id", "createdAt", "createdBy", "projectId", "siteId", "title", "fileName", "fileUrl", "mimeType", "notes", "type"],
+  users: ["email", "name", "role", "status", "permissions", "id", "createdAt", "createdBy", "username"],
 };
 
 function doPost(event) {
@@ -53,19 +54,14 @@ function ensureSheets_(spreadsheetId) {
   Object.keys(SCHEMA).forEach((name) => {
     const sheet = ss.getSheetByName(name) || ss.insertSheet(name);
     const headers = SCHEMA[name];
-    const existingHeaders = sheet.getRange(1, 1, 1, Math.max(headers.length, sheet.getLastColumn() || 1)).getValues()[0];
-    const hasHeaders = existingHeaders.slice(0, headers.length).join("") !== "";
-    if (!hasHeaders) {
-      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      sheet.setFrozenRows(1);
-    }
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.setFrozenRows(1);
   });
 }
 
 function listTables_(spreadsheetId) {
   const ss = SpreadsheetApp.openById(spreadsheetId);
   return Object.keys(SCHEMA).reduce((tables, name) => {
-    if (name === "users") return tables;
     tables[name] = readSheet_(ss.getSheetByName(name), SCHEMA[name]);
     return tables;
   }, {});
@@ -97,7 +93,7 @@ function upsert_(spreadsheetId, driveFolderId, table, record) {
     delete cleanRecord.fileData;
   }
 
-  const existingRow = findRowById_(sheet, cleanRecord.id);
+  const existingRow = table === "users" ? findRowByFirstColumn_(sheet, cleanRecord.email) : findRowById_(sheet, cleanRecord.id);
   const values = headers.map((header) => cleanRecord[header] || "");
   if (existingRow > 0) {
     sheet.getRange(existingRow, 1, 1, headers.length).setValues([values]);
@@ -118,9 +114,13 @@ function saveFile_(driveFolderId, record) {
 }
 
 function findRowById_(sheet, id) {
-  if (!id || sheet.getLastRow() < 2) return -1;
+  return findRowByFirstColumn_(sheet, id);
+}
+
+function findRowByFirstColumn_(sheet, value) {
+  if (!value || sheet.getLastRow() < 2) return -1;
   const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
-  const index = values.findIndex((row) => row[0] === id);
+  const index = values.findIndex((row) => row[0] === value);
   return index >= 0 ? index + 2 : -1;
 }
 

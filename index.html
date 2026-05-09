@@ -24,12 +24,14 @@
           <button class="nav-item active" data-view="dashboard">Genel Bakış</button>
           <button class="nav-item" data-view="projects">Projeler</button>
           <button class="nav-item" data-view="sites">Şantiyeler</button>
+          <button class="nav-item" data-view="tasks">Görevler</button>
           <button class="nav-item" data-view="reports">Günlük Rapor</button>
           <button class="nav-item" data-view="payments">Hakediş</button>
           <button class="nav-item" data-view="personnel">Personel</button>
           <button class="nav-item" data-view="materials">Malzemeler</button>
           <button class="nav-item" data-view="documents">Fotoğraf & PDF</button>
           <button class="nav-item" data-view="calendar">Takvim / Gantt</button>
+          <button class="nav-item" data-view="users">Kullanıcılar</button>
           <button class="nav-item" data-view="settings">Ayarlar</button>
         </nav>
 
@@ -110,10 +112,12 @@
               <h2>Proje Ekle</h2>
               <label>Proje adı<input name="name" required /></label>
               <label>Müşteri / İşveren<input name="client" /></label>
+              <label>Konum<input name="location" /></label>
               <div class="field-row">
                 <label>Başlangıç<input name="startDate" type="date" required /></label>
                 <label>Bitiş<input name="endDate" type="date" required /></label>
               </div>
+              <label>Bütçe<input name="budget" type="number" min="0" step="0.01" /></label>
               <label>Durum
                 <select name="status">
                   <option>Planlandı</option>
@@ -150,6 +154,25 @@
           </div>
         </section>
 
+        <section class="view" id="tasks">
+          <div class="split">
+            <form class="panel form-panel" data-form="tasks">
+              <h2>Görev Ekle</h2>
+              <label>Proje<select name="projectId" data-project-select required></select></label>
+              <label>Görev başlığı<input name="title" required /></label>
+              <label>Atanan kişi<input name="assignedTo" /></label>
+              <label>Termin<input name="dueDate" type="date" /></label>
+              <label>Durum<select name="status"><option>Planlandı</option><option>Devam ediyor</option><option>Tamamlandı</option><option>Beklemede</option></select></label>
+              <label>Not<textarea name="notes" rows="3"></textarea></label>
+              <button class="primary" type="submit">Görevi Kaydet</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-header"><h2>Görevler</h2><span id="taskCount">0 kayıt</span></div>
+              <div class="table-wrap"><table id="tasksTable"></table></div>
+            </section>
+          </div>
+        </section>
+
         <section class="view" id="reports">
           <div class="split">
             <form class="panel form-panel" data-form="reports">
@@ -157,8 +180,13 @@
               <label>Proje<select name="projectId" data-project-select required></select></label>
               <label>Şantiye<select name="siteId" data-site-select required></select></label>
               <label>Tarih<input name="date" type="date" required /></label>
+              <label>Çalışma saati<input name="workingHours" placeholder="08:00-18:00" /></label>
               <label>Yapılan işler<textarea name="workDone" rows="4" required></textarea></label>
+              <label>Sonraki plan<textarea name="nextPlan" rows="3"></textarea></label>
+              <label>Olay / kaza<textarea name="incident" rows="2"></textarea></label>
               <label>Risk / Not<textarea name="notes" rows="3"></textarea></label>
+              <label>Ek dosya adı<input name="attachmentName" /></label>
+              <label>Ek dosya bağlantısı<input name="attachmentUrl" type="url" /></label>
               <button class="primary" type="submit">Raporu Kaydet</button>
             </form>
             <section class="panel table-panel">
@@ -194,6 +222,7 @@
               <label>Şantiye<select name="siteId" data-site-select required></select></label>
               <label>Tarih<input name="date" type="date" required /></label>
               <label>Personel adı<input name="name" required /></label>
+              <label>Meslek / ekip<input name="job" /></label>
               <label>Durum<select name="attendance"><option>Geldi</option><option>Gelmedi</option><option>İzinli</option><option>Raporlu</option></select></label>
               <button class="primary" type="submit">Yoklamayı Kaydet</button>
             </form>
@@ -209,13 +238,21 @@
             <form class="panel form-panel" data-form="materials">
               <h2>Malzeme Kaydı</h2>
               <label>Proje<select name="projectId" data-project-select required></select></label>
+              <label>Tarih<input name="date" type="date" /></label>
               <label>Malzeme<input name="name" required /></label>
+              <label>Özellik / sınıf<input name="spec" /></label>
               <div class="field-row">
                 <label>Miktar<input name="quantity" type="number" step="0.01" required /></label>
                 <label>Birim<input name="unit" placeholder="adet, kg, m3" /></label>
               </div>
+              <label>Tedarikçi<input name="supplier" /></label>
+              <div class="field-row">
+                <label>Birim fiyat<input name="unitPrice" type="number" min="0" step="0.01" /></label>
+                <label>Toplam<input name="total" type="number" min="0" step="0.01" /></label>
+              </div>
               <label>Minimum stok<input name="minimum" type="number" step="0.01" /></label>
               <label>Durum<select name="status"><option>Stokta</option><option>Sipariş verildi</option><option>Kritik</option></select></label>
+              <label>Not<textarea name="notes" rows="3"></textarea></label>
               <button class="primary" type="submit">Malzemeyi Kaydet</button>
             </form>
             <section class="panel table-panel">
@@ -232,7 +269,9 @@
               <label>Proje<select name="projectId" data-project-select required></select></label>
               <label>Şantiye<select name="siteId" data-site-select></select></label>
               <label>Başlık<input name="title" required /></label>
+              <label>Tür<select name="type"><option>Fotoğraf</option><option>PDF</option><option>Rapor</option><option>Sözleşme</option><option>Diğer</option></select></label>
               <label>Dosya<input name="file" type="file" accept="image/*,.pdf" /></label>
+              <label>Mevcut dosya bağlantısı<input name="fileUrl" type="url" /></label>
               <label>Açıklama<textarea name="notes" rows="3"></textarea></label>
               <button class="primary" type="submit">Dosyayı Kaydet</button>
             </form>
@@ -255,6 +294,25 @@
             <div class="panel-header"><h2>Zaman Çizelgesi</h2><span>Projeler</span></div>
             <div class="gantt large" id="fullGanttBoard"></div>
           </section>
+        </section>
+
+        <section class="view" id="users">
+          <div class="split">
+            <form class="panel form-panel" data-form="users">
+              <h2>Kullanıcı Ekle</h2>
+              <label>Ad soyad<input name="name" required /></label>
+              <label>Kullanıcı adı<input name="username" /></label>
+              <label>E-posta<input name="email" type="email" /></label>
+              <label>Rol<select name="role"><option>admin</option><option>sef</option><option>editor</option><option>viewer</option></select></label>
+              <label>Durum<select name="status"><option>active</option><option>passive</option></select></label>
+              <label>İzinler<input name="permissions" placeholder="*" /></label>
+              <button class="primary" type="submit">Kullanıcıyı Kaydet</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-header"><h2>Kullanıcılar</h2><span id="userCount">0 kayıt</span></div>
+              <div class="table-wrap"><table id="usersTable"></table></div>
+            </section>
+          </div>
         </section>
 
         <section class="view" id="settings">
