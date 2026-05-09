@@ -1,0 +1,1 @@
+Remove local record mode and use Sheets as the only business data source.
