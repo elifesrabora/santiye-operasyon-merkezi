@@ -1,0 +1,1 @@
+Trigger Sheets sync visibility fix.
