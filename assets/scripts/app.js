@@ -14,8 +14,7 @@ const DEFAULT_SETTINGS = {
   apiBaseUrl: "https://script.google.com/macros/s/AKfycbxsGhQNPJLG2UpWBDr6iUntH_XPT2iSUukKvf2gttwTpwq2o-tYzloTja8HGEwLLLU5Cg/exec",
   apiToken: "AYAZLAR_SANTIYE_2026",
   companyName: "Ayazlar Yapı",
-  sheetNote: "Ana Google Sheet: https://docs.google.com/spreadsheets/d/17WZGVKxZ2cfSxEGkLPRQazHNFU4iYBAqMDYy99ZfErM/edit?usp=sharing",
-  whatsappNumbers: ""
+  sheetNote: "Ana Google Sheet: https://docs.google.com/spreadsheets/d/17WZGVKxZ2cfSxEGkLPRQazHNFU4iYBAqMDYy99ZfErM/edit?usp=sharing"
 };
 
 const FALLBACK_LOGIN_USERS = [{
@@ -165,7 +164,6 @@ const els = {
   calendarPrevBtn: document.getElementById("calendar-prev-btn"),
   calendarTodayBtn: document.getElementById("calendar-today-btn"),
   calendarNextBtn: document.getElementById("calendar-next-btn"),
-  whatsappLinks: document.getElementById("whatsapp-links"),
   notificationBtn: document.getElementById("notification-btn"),
   documentForm: document.getElementById("document-form"),
   documentId: document.getElementById("document-id"),
@@ -191,8 +189,7 @@ const els = {
   settingsApiUrl: document.getElementById("settings-api-url"),
   settingsApiToken: document.getElementById("settings-api-token"),
   settingsCompanyName: document.getElementById("settings-company-name"),
-  settingsSheetNote: document.getElementById("settings-sheet-note"),
-  settingsWhatsappNumbers: document.getElementById("settings-whatsapp-numbers")
+  settingsSheetNote: document.getElementById("settings-sheet-note")
 };
 
 boot();
@@ -278,7 +275,6 @@ function hydrateForms() {
   els.settingsApiToken.value = state.settings.apiToken || "";
   els.settingsCompanyName.value = state.settings.companyName;
   els.settingsSheetNote.value = state.settings.sheetNote;
-  els.settingsWhatsappNumbers.value = state.settings.whatsappNumbers || "";
 }
 
 function renderAuthMode() {
@@ -1273,7 +1269,6 @@ async function onSaveTask(event) {
   state.calendarDate = new Date(`${payload.dueDate}T12:00:00`);
   renderAll();
   els.taskForm.reset();
-  renderWhatsappLinks(payload);
   showToast(remoteSaved ? "Takvim kaydı eklendi." : "Takvim kaydı yerelde tutuldu.");
 }
 
@@ -1329,42 +1324,6 @@ function renderTaskCard(task) {
   `;
 }
 
-function renderWhatsappLinks(task) {
-  if (!els.whatsappLinks) return;
-  const numbers = parseWhatsappNumbers(state.settings.whatsappNumbers);
-  if (!numbers.length) {
-    els.whatsappLinks.classList.remove("hidden");
-    els.whatsappLinks.innerHTML = "WhatsApp bildirimi için Ayarlar bölümüne bildirim numaralarını girin.";
-    return;
-  }
-  const message = buildWhatsappMessage(task);
-  els.whatsappLinks.classList.remove("hidden");
-  els.whatsappLinks.innerHTML = `
-    <strong>WhatsApp bildirimi hazır:</strong>
-    <div class="whatsapp-link-list">
-      ${numbers.map((number) => `<a class="btn btn-secondary" href="https://wa.me/${number}?text=${encodeURIComponent(message)}" target="_blank" rel="noreferrer">Gönder: ${escapeHtml(number)}</a>`).join("")}
-    </div>
-  `;
-}
-
-function parseWhatsappNumbers(value) {
-  return String(value || "")
-    .split(/[\s,;]+/)
-    .map((item) => item.replace(/\D/g, ""))
-    .filter((item) => item.length >= 10);
-}
-
-function buildWhatsappMessage(task) {
-  return [
-    "Ayazlar Yapı Takvim Bildirimi",
-    `Proje: ${projectName(task.projectId)}`,
-    `Tarih: ${task.dueDate || "-"}`,
-    `Takip edilecek iş: ${task.title}`,
-    `Bilgi: ${task.note || "-"}`,
-    `Giren: ${userName(task.createdById)}`,
-    `Kayıt zamanı: ${formatDateTime(task.createdAt)}`
-  ].join("\n");
-}
 
 async function deleteDocument(documentId) {
   const item = state.documents.find((documentItem) => documentItem.id === documentId);
@@ -1418,8 +1377,7 @@ function onSaveSettings(event) {
     apiBaseUrl: els.settingsApiUrl.value.trim(),
     apiToken: els.settingsApiToken.value.trim(),
     companyName: els.settingsCompanyName.value.trim(),
-    sheetNote: els.settingsSheetNote.value.trim(),
-    whatsappNumbers: els.settingsWhatsappNumbers.value.trim()
+    sheetNote: els.settingsSheetNote.value.trim()
   });
   state.apiHealth = "unknown";
   persist(STORAGE_KEYS.settings, state.settings);

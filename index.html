@@ -541,7 +541,7 @@
       <section class="view" id="view-calendar">
         <div class="calendar-layout">
           <div class="panel"><div class="panel-header"><div><div class="eyebrow">Planlama</div><h2>Takip Edilecek İş</h2></div><div class="header-actions"><button class="btn btn-secondary" type="button" id="notification-btn">Bildirim Aç</button></div></div>
-            <form id="task-form" class="panel-body form-grid"><input type="hidden" id="task-id" name="id"><div class="form-row cols-2"><label class="field"><span>Proje</span><select id="task-project" name="projectId"></select></label><label class="field"><span>Bilgiyi Giren</span><input type="text" id="task-author-label" readonly placeholder="Oturumdaki kullanıcı"><select id="task-assignee" name="assignedToId" class="hidden"></select></label></div><div class="form-row cols-2"><label class="field"><span>Takip Edilecek İş</span><input type="text" id="task-title" name="title" placeholder="Beton dökümü, sevkiyat, kontrol..."></label><label class="field"><span>Tarih</span><input type="date" id="task-date" name="dueDate"></label></div><input type="hidden" id="task-status" name="status" value="Planlandı"><label class="field"><span>Bilgi / Not</span><textarea id="task-note" name="note" rows="4" placeholder="Takip edilecek işle ilgili bilgi"></textarea></label><div class="form-actions"><button type="reset" class="btn btn-secondary">Temizle</button><button type="submit" class="btn btn-primary">Takibe Ekle</button></div><div class="info-card hidden" id="whatsapp-links"></div></form>
+            <form id="task-form" class="panel-body form-grid"><input type="hidden" id="task-id" name="id"><div class="form-row cols-2"><label class="field"><span>Proje</span><select id="task-project" name="projectId"></select></label><label class="field"><span>Bilgiyi Giren</span><input type="text" id="task-author-label" readonly placeholder="Oturumdaki kullanıcı"><select id="task-assignee" name="assignedToId" class="hidden"></select></label></div><div class="form-row cols-2"><label class="field"><span>Takip Edilecek İş</span><input type="text" id="task-title" name="title" placeholder="Beton dökümü, sevkiyat, kontrol..."></label><label class="field"><span>Tarih</span><input type="date" id="task-date" name="dueDate"></label></div><input type="hidden" id="task-status" name="status" value="Planlandı"><label class="field"><span>Bilgi / Not</span><textarea id="task-note" name="note" rows="4" placeholder="Takip edilecek işle ilgili bilgi"></textarea></label><div class="form-actions"><button type="reset" class="btn btn-secondary">Temizle</button><button type="submit" class="btn btn-primary">Takibe Ekle</button></div></form>
           </div>
           <div class="panel"><div class="panel-header"><div><div class="eyebrow">Bu Ay</div><h2 id="calendar-title">Takvim</h2></div><div class="header-actions"><button class="btn btn-secondary" type="button" id="calendar-prev-btn">Önceki Ay</button><button class="btn btn-secondary" type="button" id="calendar-today-btn">Bugün</button><button class="btn btn-secondary" type="button" id="calendar-next-btn">Sonraki Ay</button></div></div><div class="panel-body"><div class="calendar-grid" id="calendar-grid"></div></div></div>
         </div>
@@ -637,11 +637,6 @@
             <label class="field">
               <span>Drive / Sheet Notu</span>
               <textarea name="sheetNote" id="settings-sheet-note" rows="4" placeholder="Bağlı sheet linki, tablo isimleri veya kurulum notları..."></textarea>
-            </label>
-
-            <label class="field">
-              <span>WhatsApp Bildirim Numaraları</span>
-              <textarea name="whatsappNumbers" id="settings-whatsapp-numbers" rows="3" placeholder="905xxxxxxxxx, 905yyyyyyyyy"></textarea>
             </label>
 
             <div class="info-card">
