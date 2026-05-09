@@ -6,6 +6,7 @@ Projeler, şantiyeler, günlük raporlar, hakediş, personel yoklama, malzeme li
 
 - Google Sheet: `1brBxxE6agOvAhTSp26nkN7NrtoWRyQygce5sRcE3ZyI`
 - Google Drive klasörü: `1kay5Ri3t_vLbRMuG22_tXslRsmwk4lg4`
+- Apps Script Web App: `https://script.google.com/macros/s/AKfycbyr8CyvG1ubgI9xUCR9esVIf7GLoSBFBtfXZCN3fNXB94QsvThEx6MX0qjVeO4nFZB3jw/exec`
 
 ## Dosyalar
 
@@ -32,7 +33,7 @@ Projeler, şantiyeler, günlük raporlar, hakediş, personel yoklama, malzeme li
 6. Execute as: `Me`.
 7. Who has access: ilk test için `Anyone with the link`; gerçek kullanımda erişim modelini netleştirince kısıtlanmalı.
 8. Deploy sonrası verilen Web app URL'sini kopyala.
-9. Web panelinde `Ayarlar` bölümüne bu URL'yi yapıştır ve kaydet.
+9. Web panelinde `Ayarlar` bölümüne bu URL'yi yapıştır ve kaydet. Bu repo için mevcut URL varsayılan olarak koda eklenmiştir.
 
 ## Google Sheet sekmeleri
 

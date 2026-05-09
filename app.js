@@ -1,6 +1,7 @@
 const CONFIG = {
   spreadsheetId: "1brBxxE6agOvAhTSp26nkN7NrtoWRyQygce5sRcE3ZyI",
   driveFolderId: "1kay5Ri3t_vLbRMuG22_tXslRsmwk4lg4",
+  defaultApiUrl: "https://script.google.com/macros/s/AKfycbyr8CyvG1ubgI9xUCR9esVIf7GLoSBFBtfXZCN3fNXB94QsvThEx6MX0qjVeO4nFZB3jw/exec",
   storageKey: "santiye-operasyon-data-v1",
   settingsKey: "santiye-operasyon-settings-v1",
 };
@@ -56,7 +57,7 @@ function saveState() {
 
 function loadSettings() {
   const saved = localStorage.getItem(CONFIG.settingsKey);
-  return saved ? JSON.parse(saved) : { apiUrl: "", userEmail: "", role: "admin" };
+  return saved ? { apiUrl: CONFIG.defaultApiUrl, ...JSON.parse(saved) } : { apiUrl: CONFIG.defaultApiUrl, userEmail: "", role: "admin" };
 }
 
 function saveSettings() {
