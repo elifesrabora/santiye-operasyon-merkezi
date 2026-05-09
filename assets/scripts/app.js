@@ -27,6 +27,15 @@ const FALLBACK_LOGIN_USERS = [{
 }];
 
 const savedSettings = loadJson(STORAGE_KEYS.settings, {});
+const BUSINESS_STORAGE_KEYS = [
+  STORAGE_KEYS.projects,
+  STORAGE_KEYS.users,
+  STORAGE_KEYS.reports,
+  STORAGE_KEYS.puantaj,
+  STORAGE_KEYS.orders,
+  STORAGE_KEYS.tasks,
+  STORAGE_KEYS.documents
+];
 
 const state = {
   currentView: "dashboard",
@@ -35,13 +44,13 @@ const state = {
   calendarDate: new Date(),
   currentUser: loadJson(STORAGE_KEYS.session, null),
   settings: normalizeSettings(savedSettings),
-  projects: loadJson(STORAGE_KEYS.projects, []),
-  users: loadJson(STORAGE_KEYS.users, []),
-  reports: loadJson(STORAGE_KEYS.reports, []),
-  puantaj: loadJson(STORAGE_KEYS.puantaj, []),
-  orders: loadJson(STORAGE_KEYS.orders, []),
-  tasks: loadJson(STORAGE_KEYS.tasks, []),
-  documents: loadJson(STORAGE_KEYS.documents, [])
+  projects: [],
+  users: [],
+  reports: [],
+  puantaj: [],
+  orders: [],
+  tasks: [],
+  documents: []
 };
 
 const AUTO_SYNC_MS = 60000;
@@ -195,6 +204,7 @@ const els = {
 boot();
 
 async function boot() {
+  clearLocalBusinessCache();
   wireNavigation();
   document.querySelectorAll("[data-view-jump]").forEach((button) => {
     button.addEventListener("click", () => setView(button.dataset.viewJump));
@@ -351,12 +361,14 @@ async function createFirstAdmin() {
     active: true
   };
 
+  const remoteSaved = await sendToApi("saveUser", payload);
+  if (!remoteSaved) return;
+  if (!remoteSaved) return;
   state.users.push(payload);
-  persist(STORAGE_KEYS.users, state.users);
   state.currentUser = normalizeUser(payload);
   persist(STORAGE_KEYS.session, state.currentUser);
   showApp();
-  showToast("İlk admin oluşturuldu.");
+  showToast("İlk admin Sheets'e kaydedildi.");
 }
 
 function showLoginError(message) {
@@ -726,6 +738,7 @@ async function onSaveReport(event) {
   };
   const apiResult = await sendToApi(existingId ? "updateReport" : "saveReport", payload);
   const remoteSaved = Boolean(apiResult);
+  if (!remoteSaved) return;
   if (apiResult?.report) {
     Object.assign(payload, {
       attachmentName: apiResult.report.attachmentName || payload.attachmentName,
@@ -741,10 +754,9 @@ async function onSaveReport(event) {
   delete payload.attachmentFile;
   if (existingId) state.reports = state.reports.map((item) => item.id === existingId ? payload : item);
   else state.reports.push(payload);
-  persist(STORAGE_KEYS.reports, state.reports);
   renderAll();
   resetReportForm();
-  showToast(remoteSaved ? "Saha raporu kaydedildi." : "Saha raporu yerelde kaydedildi.");
+  showToast("Saha raporu Sheets'e kaydedildi.");
 }
 
 async function buildReportAttachment(existingReport = null) {
@@ -896,12 +908,12 @@ async function onSavePuantaj() {
     workers
   };
   const remoteSaved = await sendToApi(existingId ? "updatePuantaj" : "savePuantaj", payload);
+  if (!remoteSaved) return;
   if (existingId) state.puantaj = state.puantaj.map((item) => item.id === existingId ? payload : item);
   else state.puantaj.push(payload);
-  persist(STORAGE_KEYS.puantaj, state.puantaj);
   renderAll();
   resetPuantajForm();
-  showToast(remoteSaved ? "Puantaj kaydedildi." : "Puantaj yerelde kaydedildi.");
+  showToast("Puantaj Sheets'e kaydedildi.");
 }
 
 function editPuantaj(puantajId) {
@@ -964,15 +976,15 @@ async function onSaveOrder(event) {
     updatedAt: existingId ? new Date().toISOString() : ""
   };
   const remoteSaved = await sendToApi(existingId ? "updateOrder" : "saveOrder", payload);
+  if (!remoteSaved) return;
   if (existingId) {
     state.orders = state.orders.map((item) => item.id === existingId ? payload : item);
   } else {
     state.orders.push(payload);
   }
-  persist(STORAGE_KEYS.orders, state.orders);
   renderAll();
   resetOrderForm();
-  showToast(remoteSaved ? "Sipariş kaydedildi." : "Sipariş yerelde kaydedildi.");
+  showToast("Sipariş Sheets'e kaydedildi.");
 }
 
 function editOrder(orderId) {
@@ -1025,12 +1037,12 @@ async function onSaveProject(event) {
     budget: Number(form.get("budget") || 0)
   };
   const remoteSaved = await sendToApi("saveProject", payload);
+  if (!remoteSaved) return;
   state.projects.push(payload);
-  persist(STORAGE_KEYS.projects, state.projects);
   renderAll();
   refreshWorkerProjectOptions();
   els.projectForm.reset();
-  showToast(remoteSaved ? "Proje kaydedildi." : "Proje yerelde kaydedildi.");
+  showToast("Proje Sheets'e kaydedildi.");
 }
 
 async function onSaveUser(event) {
@@ -1051,10 +1063,9 @@ async function onSaveUser(event) {
   };
   const remoteSaved = await sendToApi("saveUser", payload);
   state.users.push(payload);
-  persist(STORAGE_KEYS.users, state.users);
   renderAll();
   els.userForm.reset();
-  showToast(remoteSaved ? "Kullanıcı kaydedildi." : "Kullanıcı yerelde kaydedildi.");
+  showToast("Kullanıcı Sheets'e kaydedildi.");
 }
 
 function requireAuth() {
@@ -1264,12 +1275,12 @@ async function onSaveTask(event) {
     createdAt: new Date().toISOString()
   };
   const remoteSaved = await sendToApi("saveTask", payload);
+  if (!remoteSaved) return;
   state.tasks.push(payload);
-  persist(STORAGE_KEYS.tasks, state.tasks);
   state.calendarDate = new Date(`${payload.dueDate}T12:00:00`);
   renderAll();
   els.taskForm.reset();
-  showToast(remoteSaved ? "Takvim kaydı eklendi." : "Takvim kaydı yerelde tutuldu.");
+  showToast("Takvim kaydı Sheets'e eklendi.");
 }
 
 function changeCalendarMonth(offset) {
@@ -1330,10 +1341,10 @@ async function deleteDocument(documentId) {
   if (!item) return;
   if (!window.confirm(`"${item.title}" evrak kaydı silinsin mi?`)) return;
   const remoteDeleted = await sendToApi("deleteDocument", { id: documentId });
+  if (!remoteDeleted) return;
   state.documents = state.documents.filter((documentItem) => documentItem.id !== documentId);
-  persist(STORAGE_KEYS.documents, state.documents);
   renderAll();
-  showToast(remoteDeleted ? "Evrak silindi." : "Evrak yerelden silindi.");
+  showToast("Evrak Sheets'ten silindi.");
 }
 
 async function requestNotifications() {
@@ -1410,22 +1421,15 @@ async function syncFromApi(options = {}) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
     if (payload.ok === false) throw new Error(payload.error || "API hatası");
-    state.projects = payload.projects || state.projects;
-    if (Array.isArray(payload.users) && payload.users.length > 0) {
-      state.users = mergeUsersKeepingLocalSecrets(state.users, payload.users);
-    }
-    state.reports = mergeById(state.reports, payload.reports);
-    state.puantaj = mergeById(state.puantaj, payload.puantaj);
-    state.orders = mergeById(state.orders, payload.orders);
-    state.tasks = mergeById(state.tasks, payload.tasks);
-    state.documents = mergeById(state.documents, payload.documents);
-    persist(STORAGE_KEYS.projects, state.projects);
-    persist(STORAGE_KEYS.users, state.users);
-    persist(STORAGE_KEYS.reports, state.reports);
-    persist(STORAGE_KEYS.puantaj, state.puantaj);
-    persist(STORAGE_KEYS.orders, state.orders);
-    persist(STORAGE_KEYS.tasks, state.tasks);
-    persist(STORAGE_KEYS.documents, state.documents);
+    state.projects = Array.isArray(payload.projects) ? payload.projects : [];
+    state.users = Array.isArray(payload.users) && payload.users.length > 0
+      ? mergeUsersKeepingLocalSecrets(state.users, payload.users)
+      : [];
+    state.reports = Array.isArray(payload.reports) ? payload.reports : [];
+    state.puantaj = Array.isArray(payload.puantaj) ? payload.puantaj : [];
+    state.orders = Array.isArray(payload.orders) ? payload.orders : [];
+    state.tasks = Array.isArray(payload.tasks) ? payload.tasks : [];
+    state.documents = Array.isArray(payload.documents) ? payload.documents : [];
     state.apiHealth = "ok";
     setConnectionPill();
     renderAuthMode();
@@ -1469,7 +1473,7 @@ async function sendToApi(action, payload) {
     console.error(error);
     state.apiHealth = "error";
     setConnectionPill();
-    showToast("Sheets bağlantısına yazılamadı, veri yerelde tutuldu.");
+    showToast("Sheets bağlantısına yazılamadı. Kayıt oluşturulmadı.");
     return false;
   }
 }
@@ -1925,11 +1929,11 @@ function kpiCard(label, value, note) {
 }
 
 function setConnectionPill() {
-  if (!state.settings.apiBaseUrl) return (els.connectionPill.textContent = "Yerel Kayıt");
+  if (!state.settings.apiBaseUrl) return (els.connectionPill.textContent = "Sheets Ayarı Gerekli");
   if (!state.settings.apiToken) return (els.connectionPill.textContent = "Token Gerekli");
   if (state.apiHealth === "ok") return (els.connectionPill.textContent = "Sheets Canlı");
   if (state.apiHealth === "error") return (els.connectionPill.textContent = "Sheets Hatası");
-  els.connectionPill.textContent = "Sheets Bağlı";
+  els.connectionPill.textContent = "Sheets Bağlanıyor";
 }
 
 async function sha256(text) {
@@ -1952,7 +1956,12 @@ function normalizeSettings(settings) {
 }
 
 function persist(key, value) {
+  if (BUSINESS_STORAGE_KEYS.includes(key)) return;
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function clearLocalBusinessCache() {
+  BUSINESS_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
 }
 
 function mergeById(localItems, remoteItems) {
