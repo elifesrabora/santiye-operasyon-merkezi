@@ -1,1 +1,1 @@
-Remove WhatsApp functionality from website files.
+Retry WhatsApp removal from website files.
