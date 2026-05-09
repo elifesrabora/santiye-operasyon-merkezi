@@ -1421,6 +1421,9 @@ function onSaveSettings(event) {
 
 async function syncFromApi(options = {}) {
   const { silent = false } = options;
+  state.settings = normalizeSettings(state.settings);
+  persist(STORAGE_KEYS.settings, state.settings);
+  hydrateForms();
   if (!state.settings.apiBaseUrl) {
     if (!silent) showToast("Önce Apps Script URL bilgisini ayarlara girin.");
     setView("settings");
@@ -1468,7 +1471,9 @@ async function syncFromApi(options = {}) {
     }
     renderAll();
     refreshWorkerProjectOptions();
-    if (!silent) showToast("Google Sheets verileri yüklendi.");
+    if (!silent) {
+      showToast(`Sheets yüklendi: ${state.projects.length} proje, ${state.reports.length} rapor, ${state.puantaj.length} puantaj.`);
+    }
   } catch (error) {
     console.error(error);
     state.apiHealth = "error";
