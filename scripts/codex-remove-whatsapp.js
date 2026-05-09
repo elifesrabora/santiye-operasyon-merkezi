@@ -1,41 +1,40 @@
 const fs = require('fs');
 
-function replaceAllChecked(file, replacements) {
-  let text = fs.readFileSync(file, 'utf8');
-  for (const [from, to] of replacements) {
-    if (!text.includes(from)) {
-      console.warn(`Pattern not found in ${file}: ${from.slice(0, 80).replace(/\n/g, ' ')}`);
-      continue;
-    }
-    text = text.replace(from, to);
-  }
+function read(file) {
+  return fs.readFileSync(file, 'utf8');
+}
+
+function write(file, text) {
   fs.writeFileSync(file, text);
 }
 
-replaceAllChecked('assets/scripts/app.js', [
-  [`,\n  whatsappNumbers: ""`, ``],
-  [`  whatsappLinks: document.getElementById("whatsapp-links"),\n`, ``],
-  [`,\n  settingsWhatsappNumbers: document.getElementById("settings-whatsapp-numbers")`, ``],
-  [`  els.settingsWhatsappNumbers.value = state.settings.whatsappNumbers || "";\n`, ``],
-  [`  renderWhatsappLinks(payload);\n`, ``],
-  [`    sheetNote: els.settingsSheetNote.value.trim(),\n    whatsappNumbers: els.settingsWhatsappNumbers.value.trim()`, `    sheetNote: els.settingsSheetNote.value.trim()`],
-  [`\nfunction renderWhatsappLinks(task) {\n  if (!els.whatsappLinks) return;\n  const numbers = parseWhatsappNumbers(state.settings.whatsappNumbers);\n  if (!numbers.length) {\n    els.whatsappLinks.classList.remove("hidden");\n    els.whatsappLinks.innerHTML = "WhatsApp bildirimi için Ayarlar bölümüne bildirim numaralarını girin.";\n    return;\n  }\n  const message = buildWhatsappMessage(task);\n  els.whatsappLinks.classList.remove("hidden");\n  els.whatsappLinks.innerHTML = `\n    <strong>WhatsApp bildirimi hazır:</strong>\n    <div class="whatsapp-link-list">\n      ${numbers.map((number) => `<a class="btn btn-secondary" href="https://wa.me/${number}?text=${encodeURIComponent(message)}" target="_blank" rel="noreferrer">Gönder: ${escapeHtml(number)}</a>`).join("")}\n    </div>\n  `;\n}\n\nfunction parseWhatsappNumbers(value) {\n  return String(value || "")\n    .split(/[\\s,;]+/)\n    .map((item) => item.replace(/\\D/g, ""))\n    .filter((item) => item.length >= 10);\n}\n\nfunction buildWhatsappMessage(task) {\n  return [\n    "Ayazlar Yapı Takvim Bildirimi",\n    `Proje: ${projectName(task.projectId)}`,\n    `Tarih: ${task.dueDate || "-"}`,\n    `Takip edilecek iş: ${task.title}`,\n    `Bilgi: ${task.note || "-"}`,\n    `Giren: ${userName(task.createdById)}`,\n    `Kayıt zamanı: ${formatDateTime(task.createdAt)}`\n  ].join("\\n");\n}\n`, `\n`]
-]);
+let app = read('assets/scripts/app.js');
+let html = read('index.html');
+let css = read('assets/styles/main.css');
 
-replaceAllChecked('index.html', [
-  [`<div class="info-card hidden" id="whatsapp-links"></div>`, ``],
-  [`\n            <label class="field">\n              <span>WhatsApp Bildirim Numaraları</span>\n              <textarea name="whatsappNumbers" id="settings-whatsapp-numbers" rows="3" placeholder="905xxxxxxxxx, 905yyyyyyyyy"></textarea>\n            </label>\n`, `\n`]
-]);
+app = app
+  .replace(/,\n\s*whatsappNumbers:\s*""/g, '')
+  .replace(/\n\s*whatsappLinks:\s*document\.getElementById\("whatsapp-links"\),/g, '')
+  .replace(/,\n\s*settingsWhatsappNumbers:\s*document\.getElementById\("settings-whatsapp-numbers"\)/g, '')
+  .replace(/\n\s*els\.settingsWhatsappNumbers\.value\s*=\s*state\.settings\.whatsappNumbers\s*\|\|\s*"";/g, '')
+  .replace(/\n\s*renderWhatsappLinks\(payload\);/g, '')
+  .replace(/,\n\s*whatsappNumbers:\s*els\.settingsWhatsappNumbers\.value\.trim\(\)/g, '')
+  .replace(/\nfunction renderWhatsappLinks\(task\) \{[\s\S]*?\n\}\n\nfunction parseWhatsappNumbers\(value\) \{[\s\S]*?\n\}\n\nfunction buildWhatsappMessage\(task\) \{[\s\S]*?\n\}\n/g, '\n');
 
-replaceAllChecked('assets/styles/main.css', [
-  [`.whatsapp-link-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }\n`, ``]
-]);
+html = html
+  .replace(/\s*<div class="info-card hidden" id="whatsapp-links"><\/div>/g, '')
+  .replace(/\n\s*<label class="field">\n\s*<span>WhatsApp Bildirim Numaraları<\/span>\n\s*<textarea name="whatsappNumbers" id="settings-whatsapp-numbers" rows="3" placeholder="905xxxxxxxxx, 905yyyyyyyyy"><\/textarea>\n\s*<\/label>/g, '');
 
-const app = fs.readFileSync('assets/scripts/app.js', 'utf8');
-const html = fs.readFileSync('index.html', 'utf8');
-const css = fs.readFileSync('assets/styles/main.css', 'utf8');
+css = css.replace(/\.whatsapp-link-list\s*\{[^}]*\}\n?/g, '');
+
+write('assets/scripts/app.js', app);
+write('index.html', html);
+write('assets/styles/main.css', css);
+
 const combined = `${app}\n${html}\n${css}`;
 if (/whatsapp|WhatsApp|wa\.me/i.test(combined)) {
+  const matches = combined.match(/.{0,40}(?:whatsapp|WhatsApp|wa\.me).{0,80}/gi) || [];
+  console.error(matches.join('\n'));
   throw new Error('WhatsApp references remain after cleanup.');
 }
 console.log('WhatsApp functionality removed from website files.');
