@@ -27,13 +27,15 @@ const FALLBACK_LOGIN_USERS = [{
   active: true
 }];
 
+const savedSettings = loadJson(STORAGE_KEYS.settings, {});
+
 const state = {
   currentView: "dashboard",
   apiHealth: "unknown",
   selectedProjectId: null,
   calendarDate: new Date(),
   currentUser: loadJson(STORAGE_KEYS.session, null),
-  settings: loadJson(STORAGE_KEYS.settings, DEFAULT_SETTINGS),
+  settings: normalizeSettings(savedSettings),
   projects: loadJson(STORAGE_KEYS.projects, []),
   users: loadJson(STORAGE_KEYS.users, []),
   reports: loadJson(STORAGE_KEYS.reports, []),
@@ -1437,6 +1439,7 @@ async function syncFromApi(options = {}) {
     const response = await fetch(url.toString(), { method: "GET" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
+    if (payload.ok === false) throw new Error(payload.error || "API hatası");
     state.projects = payload.projects || state.projects;
     if (Array.isArray(payload.users) && payload.users.length > 0) {
       state.users = mergeUsersKeepingLocalSecrets(state.users, payload.users);
@@ -1963,6 +1966,15 @@ async function sha256(text) {
 
 function loadJson(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
+}
+
+function normalizeSettings(settings) {
+  const merged = { ...DEFAULT_SETTINGS, ...(settings || {}) };
+  if (!merged.apiBaseUrl || !String(merged.apiBaseUrl).includes("/macros/s/")) {
+    merged.apiBaseUrl = DEFAULT_SETTINGS.apiBaseUrl;
+  }
+  if (!merged.apiToken) merged.apiToken = DEFAULT_SETTINGS.apiToken;
+  return merged;
 }
 
 function persist(key, value) {
