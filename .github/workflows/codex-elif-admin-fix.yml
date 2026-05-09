@@ -1,0 +1,30 @@
+name: Codex Elif Admin Fix
+
+on:
+  push:
+    paths:
+      - '.codex-runs/elif-admin-fix-2026-05-09.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply Elif admin fix
+        run: node scripts/codex-elif-admin-fix.js
+      - name: Verify JavaScript
+        run: node --check assets/scripts/app.js
+      - name: Commit changes
+        run: |
+          git config user.name "codex-bot"
+          git config user.email "codex-bot@users.noreply.github.com"
+          git add assets/scripts/app.js
+          git commit -m "Make Elif user admin in panel"
+          git push
