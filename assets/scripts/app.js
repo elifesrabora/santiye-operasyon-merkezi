@@ -213,19 +213,21 @@ async function boot() {
   els.loginForm.addEventListener("submit", onLoginSubmit);
   hydrateForms();
   bindAppEvents();
-  renderAuthMode();
+  setConnectionPill();
 
+  if (state.settings.apiBaseUrl) {
+    await syncFromApi({ silent: true });
+    window.setInterval(() => syncFromApi({ silent: true }), AUTO_SYNC_MS);
+  } else {
+    state.apiHealth = "error";
+    setConnectionPill();
+  }
+
+  renderAuthMode();
   if (state.currentUser) {
     showApp();
   } else {
     showLogin();
-  }
-
-  if (state.settings.apiBaseUrl) {
-    syncFromApi({ silent: true });
-    window.setInterval(() => syncFromApi({ silent: true }), AUTO_SYNC_MS);
-  } else {
-    renderAll();
   }
 }
 
@@ -435,7 +437,7 @@ async function loginWithApi(username, password) {
   persist(STORAGE_KEYS.settings, state.settings);
   if (!state.settings.apiBaseUrl || !state.settings.apiToken) return null;
   try {
-    const response = await fetch(state.settings.apiBaseUrl, {
+    const response = await fetchWithTimeout(state.settings.apiBaseUrl, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({
@@ -1417,7 +1419,7 @@ async function syncFromApi(options = {}) {
     const url = new URL(state.settings.apiBaseUrl);
     url.searchParams.set("resource", "bootstrap");
     if (state.settings.apiToken) url.searchParams.set("token", state.settings.apiToken);
-    const response = await fetch(url.toString(), { method: "GET" });
+    const response = await fetchWithTimeout(url.toString(), { method: "GET" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
     if (payload.ok === false) throw new Error(payload.error || "API hatası");
@@ -1458,7 +1460,7 @@ async function sendToApi(action, payload) {
   persist(STORAGE_KEYS.settings, state.settings);
   if (!state.settings.apiBaseUrl || !state.settings.apiToken) return false;
   try {
-    const response = await fetch(state.settings.apiBaseUrl, {
+    const response = await fetchWithTimeout(state.settings.apiBaseUrl, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({ action, token: state.settings.apiToken, payload })
@@ -1933,13 +1935,23 @@ function setConnectionPill() {
   if (!state.settings.apiToken) return (els.connectionPill.textContent = "Token Gerekli");
   if (state.apiHealth === "ok") return (els.connectionPill.textContent = "Sheets Canlı");
   if (state.apiHealth === "error") return (els.connectionPill.textContent = "Sheets Hatası");
-  els.connectionPill.textContent = "Sheets Bağlanıyor";
+  els.connectionPill.textContent = "Sheets Kontrol Ediliyor";
 }
 
 async function sha256(text) {
   const data = new TextEncoder().encode(text);
   const hash = await crypto.subtle.digest("SHA-256", data);
   return [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 }
 
 function loadJson(key, fallback) {
