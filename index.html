@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Şantiye Operasyon Merkezi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">ŞO</div>
+          <div>
+            <strong>Şantiye Operasyon</strong>
+            <span>Merkezi</span>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Panel menüsü">
+          <button class="nav-item active" data-view="dashboard">Genel Bakış</button>
+          <button class="nav-item" data-view="projects">Projeler</button>
+          <button class="nav-item" data-view="sites">Şantiyeler</button>
+          <button class="nav-item" data-view="reports">Günlük Rapor</button>
+          <button class="nav-item" data-view="payments">Hakediş</button>
+          <button class="nav-item" data-view="personnel">Personel</button>
+          <button class="nav-item" data-view="materials">Malzemeler</button>
+          <button class="nav-item" data-view="documents">Fotoğraf & PDF</button>
+          <button class="nav-item" data-view="calendar">Takvim / Gantt</button>
+          <button class="nav-item" data-view="settings">Ayarlar</button>
+        </nav>
+
+        <div class="sync-box">
+          <span class="sync-dot" id="syncDot"></span>
+          <div>
+            <strong id="syncTitle">Yerel mod</strong>
+            <small id="syncDetail">Apps Script URL bekleniyor</small>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Canlı operasyon paneli</p>
+            <h1 id="pageTitle">Genel Bakış</h1>
+          </div>
+          <div class="topbar-actions">
+            <select id="projectFilter" aria-label="Proje filtresi">
+              <option value="">Tüm projeler</option>
+            </select>
+            <button class="secondary" id="refreshBtn" type="button">Yenile</button>
+            <button class="primary" id="exportPdfBtn" type="button">PDF Al</button>
+          </div>
+        </header>
+
+        <section class="view active" id="dashboard">
+          <div class="metric-grid">
+            <article class="metric">
+              <span>Aktif proje</span>
+              <strong id="metricProjects">0</strong>
+            </article>
+            <article class="metric">
+              <span>Aktif şantiye</span>
+              <strong id="metricSites">0</strong>
+            </article>
+            <article class="metric">
+              <span>Bugünkü personel</span>
+              <strong id="metricPersonnel">0/0</strong>
+            </article>
+            <article class="metric">
+              <span>Açık hakediş</span>
+              <strong id="metricPayments">0 ₺</strong>
+            </article>
+          </div>
+
+          <div class="dashboard-grid">
+            <section class="panel wide">
+              <div class="panel-header">
+                <h2>Proje Zaman Çizelgesi</h2>
+                <span>Gantt görünümü</span>
+              </div>
+              <div class="gantt" id="ganttBoard"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Son Günlük Raporlar</h2>
+                <span>Şantiye akışı</span>
+              </div>
+              <div class="activity-list" id="recentReports"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Malzeme Uyarıları</h2>
+                <span>Minimum stok</span>
+              </div>
+              <div class="activity-list" id="materialAlerts"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="projects">
+          <div class="split">
+            <form class="panel form-panel" data-form="projects">
+              <h2>Proje Ekle</h2>
+              <label>Proje adı<input name="name" required /></label>
+              <label>Müşteri / İşveren<input name="client" /></label>
+              <div class="field-row">
+                <label>Başlangıç<input name="startDate" type="date" required /></label>
+                <label>Bitiş<input name="endDate" type="date" required /></label>
+              </div>
+              <label>Durum
+                <select name="status">
+                  <option>Planlandı</option>
+                  <option selected>Devam ediyor</option>
+                  <option>Tamamlandı</option>
+                  <option>Beklemede</option>
+                </select>
+              </label>
+              <label>Not<textarea name="notes" rows="3"></textarea></label>
+              <button class="primary" type="submit">Projeyi Kaydet</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-header"><h2>Projeler</h2><span id="projectCount">0 kayıt</span></div>
+              <div class="table-wrap"><table id="projectsTable"></table></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="sites">
+          <div class="split">
+            <form class="panel form-panel" data-form="sites">
+              <h2>Şantiye Ekle</h2>
+              <label>Bağlı proje<select name="projectId" data-project-select required></select></label>
+              <label>Şantiye adı<input name="name" required /></label>
+              <label>Konum<input name="location" /></label>
+              <label>Şantiye şefi<input name="manager" /></label>
+              <label>Durum<select name="status"><option>Aktif</option><option>Pasif</option><option>Tamamlandı</option></select></label>
+              <button class="primary" type="submit">Şantiyeyi Kaydet</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-header"><h2>Şantiyeler</h2><span id="siteCount">0 kayıt</span></div>
+              <div class="table-wrap"><table id="sitesTable"></table></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="reports">
+          <div class="split">
+            <form class="panel form-panel" data-form="reports">
+              <h2>Günlük Rapor Gir</h2>
+              <label>Proje<select name="projectId" data-project-select required></select></label>
+              <label>Şantiye<select name="siteId" data-site-select required></select></label>
+              <label>Tarih<input name="date" type="date" required /></label>
+              <label>Yapılan işler<textarea name="workDone" rows="4" required></textarea></label>
+              <label>Risk / Not<textarea name="notes" rows="3"></textarea></label>
+              <button class="primary" type="submit">Raporu Kaydet</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-header"><h2>Günlük Raporlar</h2><span id="reportCount">0 kayıt</span></div>
+              <div class="table-wrap"><table id="reportsTable"></table></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="payments">
+          <div class="split">
+            <form class="panel form-panel" data-form="payments">
+              <h2>Hakediş Ekle</h2>
+              <label>Proje<select name="projectId" data-project-select required></select></label>
+              <label>Dönem<input name="period" placeholder="2026 Mayıs" required /></label>
+              <label>Tutar<input name="amount" type="number" min="0" step="0.01" required /></label>
+              <label>Durum<select name="status"><option>Hazırlanıyor</option><option>Onay bekliyor</option><option>Ödendi</option></select></label>
+              <label>Not<textarea name="notes" rows="3"></textarea></label>
+              <button class="primary" type="submit">Hakedişi Kaydet</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-header"><h2>Hakedişler</h2><span id="paymentCount">0 kayıt</span></div>
+              <div class="table-wrap"><table id="paymentsTable"></table></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="personnel">
+          <div class="split">
+            <form class="panel form-panel" data-form="personnel">
+              <h2>Personel Yoklama</h2>
+              <label>Proje<select name="projectId" data-project-select required></select></label>
+              <label>Şantiye<select name="siteId" data-site-select required></select></label>
+              <label>Tarih<input name="date" type="date" required /></label>
+              <label>Personel adı<input name="name" required /></label>
+              <label>Durum<select name="attendance"><option>Geldi</option><option>Gelmedi</option><option>İzinli</option><option>Raporlu</option></select></label>
+              <button class="primary" type="submit">Yoklamayı Kaydet</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-header"><h2>Personel Takibi</h2><span id="personnelCount">0 kayıt</span></div>
+              <div class="table-wrap"><table id="personnelTable"></table></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="materials">
+          <div class="split">
+            <form class="panel form-panel" data-form="materials">
+              <h2>Malzeme Kaydı</h2>
+              <label>Proje<select name="projectId" data-project-select required></select></label>
+              <label>Malzeme<input name="name" required /></label>
+              <div class="field-row">
+                <label>Miktar<input name="quantity" type="number" step="0.01" required /></label>
+                <label>Birim<input name="unit" placeholder="adet, kg, m3" /></label>
+              </div>
+              <label>Minimum stok<input name="minimum" type="number" step="0.01" /></label>
+              <label>Durum<select name="status"><option>Stokta</option><option>Sipariş verildi</option><option>Kritik</option></select></label>
+              <button class="primary" type="submit">Malzemeyi Kaydet</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-header"><h2>Malzeme Listesi</h2><span id="materialCount">0 kayıt</span></div>
+              <div class="table-wrap"><table id="materialsTable"></table></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="documents">
+          <div class="split">
+            <form class="panel form-panel" data-form="documents">
+              <h2>Fotoğraf / PDF Ekle</h2>
+              <label>Proje<select name="projectId" data-project-select required></select></label>
+              <label>Şantiye<select name="siteId" data-site-select></select></label>
+              <label>Başlık<input name="title" required /></label>
+              <label>Dosya<input name="file" type="file" accept="image/*,.pdf" /></label>
+              <label>Açıklama<textarea name="notes" rows="3"></textarea></label>
+              <button class="primary" type="submit">Dosyayı Kaydet</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-header"><h2>Dosya Arşivi</h2><span id="documentCount">0 kayıt</span></div>
+              <div class="table-wrap"><table id="documentsTable"></table></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="calendar">
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Takvim ve Gantt</h2>
+              <span>Gün / ay / yıl proje takibi</span>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-header"><h2>Zaman Çizelgesi</h2><span>Projeler</span></div>
+            <div class="gantt large" id="fullGanttBoard"></div>
+          </section>
+        </section>
+
+        <section class="view" id="settings">
+          <section class="panel settings-panel">
+            <h2>Bağlantı Ayarları</h2>
+            <p>Google Apps Script web app URL'sini buraya eklediğinde panel Sheets ve Drive ile senkronize olur.</p>
+            <label>Apps Script URL<input id="apiUrlInput" placeholder="https://script.google.com/macros/s/.../exec" /></label>
+            <div class="field-row">
+              <label>Kullanıcı e-posta<input id="userEmailInput" type="email" placeholder="admin@example.com" /></label>
+              <label>Rol<select id="roleInput"><option>admin</option><option>editor</option><option>viewer</option></select></label>
+            </div>
+            <button class="primary" id="saveSettingsBtn" type="button">Ayarları Kaydet</button>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
