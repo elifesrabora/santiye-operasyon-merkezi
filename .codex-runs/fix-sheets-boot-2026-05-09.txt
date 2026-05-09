@@ -1,0 +1,1 @@
+Fix Sheets boot status so the main site does not remain on checking state.
