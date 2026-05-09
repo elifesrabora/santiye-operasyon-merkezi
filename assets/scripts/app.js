@@ -310,14 +310,20 @@ async function onLoginSubmit(event) {
   els.loginError.textContent = "";
   els.loginError.style.display = "none";
 
-  if (state.users.length === 0) {
-    await createFirstAdmin();
+  const username = els.loginUsername.value.trim();
+  const password = els.loginPassword.value;
+  if (!username || !password) {
+    showLoginError("Kullanıcı adı ve şifre gerekli.");
     return;
   }
 
-  const username = els.loginUsername.value.trim();
-  const password = els.loginPassword.value;
+  state.settings = normalizeSettings(state.settings);
   const user = await findMatchingUser(username, password) || await loginWithApi(username, password);
+
+  if (!user && state.users.length === 0) {
+    await createFirstAdmin();
+    return;
+  }
 
   if (!user) {
     showLoginError("Kullanıcı adı veya şifre hatalı.");
@@ -417,6 +423,8 @@ async function findMatchingUser(username, password) {
 }
 
 async function loginWithApi(username, password) {
+  state.settings = normalizeSettings(state.settings);
+  persist(STORAGE_KEYS.settings, state.settings);
   if (!state.settings.apiBaseUrl || !state.settings.apiToken) return null;
   try {
     const response = await fetch(state.settings.apiBaseUrl, {
@@ -1406,15 +1414,16 @@ function exportAllJson() {
 
 function onSaveSettings(event) {
   event.preventDefault();
-  state.settings = {
+  state.settings = normalizeSettings({
     apiBaseUrl: els.settingsApiUrl.value.trim(),
     apiToken: els.settingsApiToken.value.trim(),
     companyName: els.settingsCompanyName.value.trim(),
     sheetNote: els.settingsSheetNote.value.trim(),
     whatsappNumbers: els.settingsWhatsappNumbers.value.trim()
-  };
+  });
   state.apiHealth = "unknown";
   persist(STORAGE_KEYS.settings, state.settings);
+  hydrateForms();
   setConnectionPill();
   showToast("Ayarlar kaydedildi.");
 }
@@ -1483,6 +1492,8 @@ async function syncFromApi(options = {}) {
 }
 
 async function sendToApi(action, payload) {
+  state.settings = normalizeSettings(state.settings);
+  persist(STORAGE_KEYS.settings, state.settings);
   if (!state.settings.apiBaseUrl || !state.settings.apiToken) return false;
   try {
     const response = await fetch(state.settings.apiBaseUrl, {
