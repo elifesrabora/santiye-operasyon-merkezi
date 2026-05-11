@@ -716,29 +716,14 @@ function renderCalendar() {
 }
 
 function renderMonthCalendar(events) {
-  const today = new Date();
+  const today = new Date().toISOString().slice(0, 10);
   const start = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth(), 1);
   const days = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + 1, 0).getDate();
-  const blanks = (start.getDay() + 6) % 7;
   const monthLabel = new Intl.DateTimeFormat("tr-TR", { month: "long", year: "numeric" }).format(start);
-  const cells = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"].map((day) => `<div class="weekday">${day}</div>`);
+  const monthDays = Array.from({ length: days }, (_, index) => new Date(calendarCursor.getFullYear(), calendarCursor.getMonth(), index + 1));
 
   document.getElementById("calendarMonthTitle").textContent = monthLabel;
-  for (let i = 0; i < blanks; i += 1) cells.push("<div></div>");
-  for (let day = 1; day <= days; day += 1) {
-    const date = `${calendarCursor.getFullYear()}-${String(calendarCursor.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const dayEvents = events.filter((item) => item.date === date);
-    const isToday = date === today.toISOString().slice(0, 10);
-    cells.push(`
-      <div class="day ${isToday ? "today" : ""}">
-        <strong>${day}</strong>
-        <div class="day-events">
-          ${dayEvents.map((item) => calendarEventButton(item)).join("")}
-        </div>
-      </div>
-    `);
-  }
-  document.getElementById("calendarGrid").innerHTML = cells.join("");
+  renderCalendarMatrix(monthDays, events, today);
 }
 
 function renderWeekCalendar(events) {
@@ -749,23 +734,53 @@ function renderWeekCalendar(events) {
   const label = `${formatter.format(weekDays[0])} - ${formatter.format(weekDays[6])} ${weekDays[6].getFullYear()}`;
 
   document.getElementById("calendarMonthTitle").textContent = label;
-  document.getElementById("calendarGrid").innerHTML = weekDays
+  renderCalendarMatrix(weekDays, events, today);
+}
+
+function renderCalendarMatrix(days, events, today) {
+  const sites = visibleCalendarSites(events);
+  const formatter = new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "short" });
+  const weekdayFormatter = new Intl.DateTimeFormat("tr-TR", { weekday: "short" });
+  const siteColumns = sites.map((site) => `<div class="calendar-matrix-head site-head">${escapeHtml(site.name)}</div>`).join("");
+  const rows = days
     .map((date) => {
       const iso = date.toISOString().slice(0, 10);
-      const dayEvents = events.filter((item) => item.date === iso);
+      const dayLabel = `${weekdayFormatter.format(date)} ${formatter.format(date)}`;
+      const cells = sites
+        .map((site) => {
+          const cellEvents = events.filter((item) => item.date === iso && item.siteId === site.id);
+          return `
+            <div class="calendar-matrix-cell">
+              ${cellEvents.length ? cellEvents.map((item) => calendarEventButton(item)).join("") : `<span class="empty-cell">-</span>`}
+            </div>
+          `;
+        })
+        .join("");
       return `
-        <section class="week-day ${iso === today ? "today" : ""}">
-          <div class="week-day-header">
-            <strong>${new Intl.DateTimeFormat("tr-TR", { weekday: "long" }).format(date)}</strong>
-            <span>${formatter.format(date)}</span>
-          </div>
-          <div class="day-events">
-            ${dayEvents.length ? dayEvents.map((item) => calendarEventButton(item)).join("") : `<div class="empty-state">Planlı iş yok.</div>`}
-          </div>
-        </section>
+        <div class="calendar-matrix-day ${iso === today ? "today" : ""}">
+          <strong>${escapeHtml(dayLabel)}</strong>
+        </div>
+        ${cells}
       `;
     })
     .join("");
+
+  document.getElementById("calendarGrid").style.setProperty("--site-columns", sites.length);
+  document.getElementById("calendarGrid").innerHTML = `
+    <div class="calendar-matrix-head day-head">Gün</div>
+    ${siteColumns}
+    ${rows}
+  `;
+}
+
+function visibleCalendarSites(events) {
+  const selectedSiteId = document.getElementById("calendarSiteFilter").value;
+  const selectedProjectId = document.getElementById("projectFilter").value;
+  const eventSiteIds = new Set(events.map((item) => item.siteId).filter(Boolean));
+  const baseSites = state.sites
+    .filter((site) => !selectedProjectId || site.projectId === selectedProjectId)
+    .filter((site) => !selectedSiteId || site.id === selectedSiteId);
+  return baseSites.length ? baseSites : state.sites.filter((site) => eventSiteIds.has(site.id));
 }
 
 function calendarEventButton(item) {

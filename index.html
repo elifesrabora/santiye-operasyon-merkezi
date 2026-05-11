@@ -317,7 +317,7 @@
 
         <section class="view" id="calendar">
           <div class="calendar-layout">
-            <form class="panel form-panel" data-form="calendarEvents">
+            <form class="panel form-panel calendar-event-form" data-form="calendarEvents">
               <h2>Şantiye İşi Planla</h2>
               <label>Şantiye<select name="siteId" data-calendar-site-select required></select></label>
               <label>Yapılacak iş<input name="title" placeholder="Temel betonu dökülecek" required /></label>
@@ -333,29 +333,29 @@
               <label>Ayrıntı<textarea name="notes" rows="3"></textarea></label>
               <button class="primary" type="submit">Takvime Kaydet</button>
             </form>
-
-            <section class="panel">
-              <div class="panel-header calendar-header">
-                <div>
-                  <h2 id="calendarMonthTitle">Takvim</h2>
-                  <span id="calendarEventCount">0 planlı iş</span>
-                </div>
-                <div class="calendar-controls">
-                  <select id="calendarSiteFilter" data-calendar-site-select aria-label="Takvim şantiye filtresi">
-                    <option value="">Tüm şantiyeler</option>
-                  </select>
-                  <div class="segmented-control" aria-label="Takvim görünümü">
-                    <button class="active" id="calendarWeekViewBtn" type="button">Hafta</button>
-                    <button id="calendarMonthViewBtn" type="button">Ay</button>
-                  </div>
-                  <button class="secondary" id="calendarPrevBtn" type="button">Önceki</button>
-                  <button class="secondary" id="calendarTodayBtn" type="button">Bugün</button>
-                  <button class="secondary" id="calendarNextBtn" type="button">Sonraki</button>
-                </div>
-              </div>
-              <div class="calendar-grid" id="calendarGrid"></div>
-            </section>
           </div>
+
+          <section class="panel">
+            <div class="panel-header calendar-header">
+              <div>
+                <h2 id="calendarMonthTitle">Takvim</h2>
+                <span id="calendarEventCount">0 planlı iş</span>
+              </div>
+              <div class="calendar-controls">
+                <select id="calendarSiteFilter" data-calendar-site-select aria-label="Takvim şantiye filtresi">
+                  <option value="">Tüm şantiyeler</option>
+                </select>
+                <div class="segmented-control" aria-label="Takvim görünümü">
+                  <button class="active" id="calendarWeekViewBtn" type="button">Hafta</button>
+                  <button id="calendarMonthViewBtn" type="button">Ay</button>
+                </div>
+                <button class="secondary" id="calendarPrevBtn" type="button">Önceki</button>
+                <button class="secondary" id="calendarTodayBtn" type="button">Bugün</button>
+                <button class="secondary" id="calendarNextBtn" type="button">Sonraki</button>
+              </div>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </section>
 
           <section class="panel">
             <div class="panel-header"><h2>Yaklaşan İşler</h2><span>Seçili filtreye göre</span></div>
