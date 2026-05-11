@@ -146,7 +146,7 @@
 
         <section class="view" id="sites">
           <div class="split">
-            <form class="panel form-panel" data-form="sites">
+            <form class="panel form-panel site-form" data-form="sites">
               <h2 id="siteFormTitle">Şantiye Ekle</h2>
               <label>Bağlı proje<select name="projectId" data-project-select required></select></label>
               <label>Şantiye adı<input name="name" required /></label>
@@ -229,22 +229,42 @@
         </section>
 
         <section class="view" id="personnel">
-          <div class="split">
-            <form class="panel form-panel" data-form="personnel">
+          <div class="personnel-toolbar">
+            <div class="segmented-control" aria-label="Personel görünümü">
+              <button class="active" id="insuredModeBtn" type="button">Sigortalı</button>
+              <button id="crewModeBtn" type="button">Ekipler</button>
+            </div>
+          </div>
+
+          <div class="personnel-entry">
+            <form class="panel form-panel personnel-form" data-form="personnel">
               <h2>Personel Yoklama</h2>
               <label>Proje<select name="projectId" data-project-select required></select></label>
               <label>Şantiye<select name="siteId" data-site-select required></select></label>
               <label>Tarih<input name="date" type="date" required /></label>
-              <label>Personel adı<input name="name" required /></label>
+              <label id="personnelNameLabel">Personel adı<input name="name" list="crewNameOptions" required /></label>
+              <datalist id="crewNameOptions">
+                <option value="Elektrik tesisatı"></option>
+                <option value="Sıhhi tesisat"></option>
+                <option value="Parke ekibi"></option>
+                <option value="Seramik ekibi"></option>
+                <option value="Elektrik montaj ekibi"></option>
+                <option value="Kaba inşaat ekibi"></option>
+                <option value="Sıva ekibi"></option>
+                <option value="Boya ekibi"></option>
+                <option value="Temizlik ekibi"></option>
+                <option value="Asansör ekibi"></option>
+              </datalist>
               <label>Meslek / ekip<input name="job" /></label>
               <label>Durum<select name="attendance"><option>Geldi</option><option>Gelmedi</option><option>İzinli</option><option>Raporlu</option></select></label>
               <button class="primary" type="submit">Yoklamayı Kaydet</button>
             </form>
-            <section class="panel table-panel">
-              <div class="panel-header"><h2>Personel Takibi</h2><span id="personnelCount">0 kayıt</span></div>
-              <div class="table-wrap"><table id="personnelTable"></table></div>
-            </section>
           </div>
+
+          <section class="panel personnel-panel">
+            <div class="panel-header"><h2 id="personnelMatrixTitle">Sigortalı Puantajı</h2><span id="personnelCount">0 kayıt</span></div>
+            <div class="personnel-matrix" id="personnelMatrix"></div>
+          </section>
         </section>
 
         <section class="view" id="materials">

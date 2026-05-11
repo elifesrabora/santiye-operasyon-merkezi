@@ -337,6 +337,27 @@ table {
   min-width: 760px;
 }
 
+#sites table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+#sites th,
+#sites td {
+  padding: 8px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.site-form {
+  grid-template-columns: repeat(5, minmax(130px, 1fr)) auto;
+  align-items: end;
+}
+
+.site-form h2 {
+  grid-column: 1 / -1;
+}
+
 th,
 td {
   padding: 12px;
@@ -494,6 +515,95 @@ tr:last-child td {
 .empty-state {
   color: var(--muted);
   font-size: 14px;
+}
+
+.personnel-toolbar {
+  margin-bottom: 12px;
+}
+
+.personnel-entry {
+  margin-bottom: 18px;
+}
+
+.personnel-form {
+  grid-template-columns: repeat(6, minmax(130px, 1fr)) auto;
+  align-items: end;
+}
+
+.personnel-form h2 {
+  grid-column: 1 / -1;
+}
+
+.personnel-panel {
+  overflow: hidden;
+}
+
+.personnel-matrix {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.2fr) repeat(var(--days, 31), minmax(24px, 1fr));
+  gap: 2px;
+}
+
+.personnel-corner,
+.personnel-head,
+.personnel-name,
+.attendance-cell {
+  min-width: 0;
+  min-height: 28px;
+  border: 1px solid var(--line);
+  padding: 4px;
+  font-size: clamp(9px, 0.8vw, 12px);
+}
+
+.personnel-corner,
+.personnel-head {
+  background: var(--surface-muted);
+  color: #2a3c35;
+  font-weight: 800;
+  text-align: center;
+}
+
+.personnel-name {
+  display: grid;
+  align-items: center;
+  background: #ffffff;
+  color: var(--ink);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.attendance-cell {
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  background: #ffffff;
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.attendance-cell.present {
+  background: #dff3e7;
+  color: #1f7a45;
+  border-color: #9fd8b7;
+}
+
+.attendance-cell.absent {
+  background: #fde2e2;
+  color: #ad2f2f;
+  border-color: #f4aaaa;
+}
+
+.attendance-cell.leave {
+  background: #fff3cf;
+  color: #8a6200;
+  border-color: #ecd185;
+}
+
+.personnel-empty {
+  grid-column: 1 / -1;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }
 
 .hidden {
@@ -869,6 +979,15 @@ tr:last-child td {
     width: 100%;
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .site-form,
+  .personnel-form {
+    grid-template-columns: 1fr;
+  }
+
+  .personnel-matrix {
+    grid-template-columns: minmax(96px, 1fr) repeat(var(--days, 31), minmax(22px, 1fr));
   }
 
   .calendar-grid.week-view,

@@ -8,7 +8,7 @@ const SCHEMA = {
   calendarEvents: ["id", "createdAt", "createdBy", "projectId", "siteId", "date", "title", "status", "notes"],
   reports: ["id", "createdAt", "createdBy", "projectId", "siteId", "date", "workDone", "notes", "workingHours", "nextPlan", "incident", "attachmentName", "attachmentUrl"],
   payments: ["id", "createdAt", "createdBy", "projectId", "period", "amount", "status", "notes"],
-  personnel: ["id", "createdAt", "createdBy", "projectId", "siteId", "date", "name", "attendance", "job"],
+  personnel: ["id", "createdAt", "createdBy", "projectId", "siteId", "date", "personType", "name", "attendance", "job"],
   materials: ["id", "createdAt", "createdBy", "projectId", "siteId", "date", "name", "spec", "quantity", "unit", "supplier", "unitPrice", "total", "status", "notes"],
   documents: ["id", "createdAt", "createdBy", "projectId", "siteId", "title", "fileName", "fileUrl", "mimeType", "notes", "type"],
   users: ["email", "name", "role", "status", "permissions", "id", "createdAt", "createdBy", "username"],

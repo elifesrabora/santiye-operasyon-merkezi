@@ -24,6 +24,19 @@ const ORDER_UNITS = {
   Diğer: "adet",
 };
 
+const DEFAULT_CREWS = [
+  "Elektrik tesisatı",
+  "Sıhhi tesisat",
+  "Parke ekibi",
+  "Seramik ekibi",
+  "Elektrik montaj ekibi",
+  "Kaba inşaat ekibi",
+  "Sıva ekibi",
+  "Boya ekibi",
+  "Temizlik ekibi",
+  "Asansör ekibi",
+];
+
 const TABLES = {
   projects: ["name", "client", "location", "startDate", "endDate", "budget", "status", "notes"],
   sites: ["projectId", "name", "location", "manager", "status"],
@@ -31,7 +44,7 @@ const TABLES = {
   calendarEvents: ["projectId", "siteId", "date", "title", "status", "notes"],
   reports: ["projectId", "siteId", "date", "workingHours", "workDone", "nextPlan", "incident", "notes", "attachmentName", "attachmentUrl"],
   payments: ["projectId", "period", "amount", "status", "notes"],
-  personnel: ["projectId", "siteId", "date", "name", "job", "attendance"],
+  personnel: ["projectId", "siteId", "date", "personType", "name", "job", "attendance"],
   materials: ["projectId", "siteId", "date", "name", "spec", "quantity", "unit", "supplier", "unitPrice", "total", "status", "notes"],
   documents: ["projectId", "siteId", "title", "type", "fileName", "fileUrl", "mimeType", "notes"],
   users: ["name", "username", "email", "role", "status", "permissions"],
@@ -44,7 +57,7 @@ const TABLE_LABELS = {
   calendarEvents: ["Proje", "Şantiye", "Tarih", "İş", "Durum", "Not"],
   reports: ["Proje", "Şantiye", "Tarih", "Saat", "Yapılan işler", "Sonraki plan", "Olay", "Not", "Ek", "Bağlantı"],
   payments: ["Proje", "Dönem", "Tutar", "Durum", "Not"],
-  personnel: ["Proje", "Şantiye", "Tarih", "Personel", "Meslek", "Durum"],
+  personnel: ["Proje", "Şantiye", "Tarih", "Tip", "İsim", "Meslek/Ekip", "Durum"],
   materials: ["Proje", "Şantiye", "Tarih", "Sipariş cinsi", "Özellik", "Miktar", "Birim", "Tedarikçi", "Birim fiyat", "Toplam", "Durum", "Not"],
   documents: ["Proje", "Şantiye", "Başlık", "Tür", "Dosya", "Bağlantı", "Mime", "Açıklama"],
   users: ["Ad", "Kullanıcı", "E-posta", "Rol", "Durum", "İzinler"],
@@ -55,12 +68,14 @@ let settings = loadSettings();
 let calendarCursor = new Date();
 let calendarView = "week";
 let selectedSiteId = "";
+let personnelMode = "Sigortalı";
 
 document.addEventListener("DOMContentLoaded", () => {
   bindNavigation();
   bindForms();
   bindTableActions();
   bindOrderControls();
+  bindPersonnelControls();
   bindCalendarControls();
   bindSettings();
   setDefaultDates();
@@ -158,6 +173,16 @@ function bindForms() {
           item.createdBy = state[table][existingIndex].createdBy;
           state[table][existingIndex] = item;
         }
+      } else if (table === "personnel") {
+        const existingIndex = findPersonnelIndex(item.name, item.date, item.personType, item.siteId);
+        if (existingIndex >= 0) {
+          item.id = state.personnel[existingIndex].id;
+          item.createdAt = state.personnel[existingIndex].createdAt;
+          item.createdBy = state.personnel[existingIndex].createdBy;
+          state.personnel[existingIndex] = item;
+        } else {
+          state[table].push(item);
+        }
       } else {
         state[table].push(item);
       }
@@ -232,6 +257,22 @@ function bindOrderControls() {
   });
 }
 
+function bindPersonnelControls() {
+  document.getElementById("insuredModeBtn").addEventListener("click", () => {
+    personnelMode = "Sigortalı";
+    renderPersonnel();
+  });
+  document.getElementById("crewModeBtn").addEventListener("click", () => {
+    personnelMode = "Ekip";
+    renderPersonnel();
+  });
+  document.getElementById("personnelMatrix").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-attendance-cell]");
+    if (!button) return;
+    updatePersonnelAttendance(button.dataset.name, button.dataset.date);
+  });
+}
+
 function bindSettings() {
   const apiUrlInput = document.getElementById("apiUrlInput");
   const userEmailInput = document.getElementById("userEmailInput");
@@ -270,6 +311,12 @@ async function formToRecord(form, table) {
   for (const field of TABLES[table]) {
     if (field === "fileName" || field === "mimeType") continue;
     record[field] = formData.get(field)?.toString().trim() || "";
+  }
+
+  if (table === "personnel") {
+    record.personType = personnelMode;
+    if (record.siteId) record.projectId = state.sites.find((site) => site.id === record.siteId)?.projectId || record.projectId;
+    if (personnelMode === "Ekip" && !record.job) record.job = "Ekip";
   }
 
   if (table === "reports") {
@@ -332,6 +379,7 @@ function render() {
   renderProjectOptions();
   renderMetrics();
   renderTables();
+  renderPersonnel();
   renderSiteDetail();
   renderActivity();
   renderGantt();
@@ -410,6 +458,109 @@ function renderTables() {
     const count = document.getElementById(`${singular(table)}Count`);
     if (count) count.textContent = `${filtered(table).length} kayıt`;
   });
+}
+
+function renderPersonnel() {
+  const matrix = document.getElementById("personnelMatrix");
+  if (!matrix) return;
+  const monthStart = new Date();
+  const year = monthStart.getFullYear();
+  const month = monthStart.getMonth();
+  const days = new Date(year, month + 1, 0).getDate();
+  const type = personnelMode;
+  const records = state.personnel.filter((item) => personnelType(item) === type);
+  const names = personnelNames(records, type);
+  const header = Array.from({ length: days }, (_, index) => `<div class="personnel-head">${index + 1}</div>`).join("");
+  const rows = names
+    .map((name) => {
+      const cells = Array.from({ length: days }, (_, index) => {
+        const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(index + 1).padStart(2, "0")}`;
+        const record = records.find((item) => item.name === name && item.date === date);
+        const attendance = record?.attendance || "";
+        return `<button class="attendance-cell ${attendanceClass(attendance)}" type="button" data-attendance-cell data-name="${escapeHtml(name)}" data-date="${date}" title="${escapeHtml(name)} - ${date}">${escapeHtml(attendanceLabel(attendance))}</button>`;
+      }).join("");
+      return `<div class="personnel-name">${escapeHtml(name)}</div>${cells}`;
+    })
+    .join("");
+
+  document.getElementById("insuredModeBtn").classList.toggle("active", type === "Sigortalı");
+  document.getElementById("crewModeBtn").classList.toggle("active", type === "Ekip");
+  document.getElementById("personnelMatrixTitle").textContent = type === "Sigortalı" ? "Sigortalı Puantajı" : "Ekip Takibi";
+  document.getElementById("personnelNameLabel").firstChild.textContent = type === "Sigortalı" ? "Personel adı" : "Ekip adı";
+  document.getElementById("personnelCount").textContent = `${records.length} kayıt`;
+  matrix.style.setProperty("--days", days);
+  matrix.innerHTML = `
+    <div class="personnel-corner">${new Intl.DateTimeFormat("tr-TR", { month: "long", year: "numeric" }).format(monthStart)}</div>
+    ${header}
+    ${rows || `<div class="empty-state personnel-empty">Henüz ${type === "Sigortalı" ? "personel" : "ekip"} kaydı yok.</div>`}
+  `;
+}
+
+function personnelType(item) {
+  return item.personType || "Sigortalı";
+}
+
+function personnelNames(records, type) {
+  const names = [...new Set(records.map((item) => item.name).filter(Boolean))].sort((a, b) => a.localeCompare(b, "tr"));
+  if (type === "Ekip") return [...new Set([...DEFAULT_CREWS, ...names])];
+  return names;
+}
+
+function updatePersonnelAttendance(name, date) {
+  const siteSelect = document.querySelector('form[data-form="personnel"] select[name="siteId"]');
+  const siteId = siteSelect?.value || state.sites[0]?.id || "";
+  const projectId = state.sites.find((site) => site.id === siteId)?.projectId || document.querySelector('form[data-form="personnel"] select[name="projectId"]')?.value || "";
+  const index = findPersonnelIndex(name, date, personnelMode, siteId);
+  const next = nextAttendance(index >= 0 ? state.personnel[index].attendance : "");
+  if (index >= 0) {
+    state.personnel[index] = { ...state.personnel[index], attendance: next };
+    syncRecord("personnel", state.personnel[index]);
+  } else {
+    const record = {
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      createdBy: settings.userEmail || "local",
+      projectId,
+      siteId,
+      date,
+      personType: personnelMode,
+      name,
+      job: personnelMode === "Ekip" ? "Ekip" : "",
+      attendance: next,
+    };
+    state.personnel.push(record);
+    syncRecord("personnel", record);
+  }
+  saveState();
+  renderPersonnel();
+}
+
+function findPersonnelIndex(name, date, type, siteId) {
+  return state.personnel.findIndex((item) => item.name === name && item.date === date && personnelType(item) === type && item.siteId === siteId);
+}
+
+function nextAttendance(current) {
+  if (current === "Geldi") return "Gelmedi";
+  if (current === "Gelmedi") return "";
+  return "Geldi";
+}
+
+function attendanceClass(attendance) {
+  return {
+    Geldi: "present",
+    Gelmedi: "absent",
+    İzinli: "leave",
+    Raporlu: "leave",
+  }[attendance] || "";
+}
+
+function attendanceLabel(attendance) {
+  return {
+    Geldi: "G",
+    Gelmedi: "Y",
+    İzinli: "İ",
+    Raporlu: "R",
+  }[attendance] || "";
 }
 
 function singular(table) {
@@ -492,7 +643,6 @@ function renderSiteDetail() {
     ["tasks", "Görevler"],
     ["calendarEvents", "Takvim İşleri"],
     ["reports", "Günlük Raporlar"],
-    ["personnel", "Personel"],
     ["materials", "Siparişler"],
     ["documents", "Fotoğraf & PDF"],
   ];
