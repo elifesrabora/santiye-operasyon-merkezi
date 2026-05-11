@@ -190,6 +190,12 @@ function bindTableActions() {
       return;
     }
 
+    const detailToggle = event.target.closest("[data-site-detail-toggle]");
+    if (detailToggle) {
+      toggleSiteDetailGroup(detailToggle.dataset.siteDetailToggle);
+      return;
+    }
+
     const editButton = event.target.closest("[data-edit-site]");
     if (!editButton) return;
     startSiteEdit(editButton.dataset.editSite);
@@ -510,7 +516,28 @@ function siteDetailGroup(table, title, siteId) {
         })
         .join("")
     : `<div class="empty-state">Kayıt yok.</div>`;
-  return `<section class="related-group"><h3>${escapeHtml(title)} <span>${rows.length}</span></h3>${list}</section>`;
+  return `
+    <section class="related-group">
+      <button class="related-toggle" type="button" data-site-detail-toggle="${escapeHtml(table)}" aria-expanded="false">
+        <span>${escapeHtml(title)}</span>
+        <strong>${rows.length}</strong>
+      </button>
+      <div class="related-content hidden" id="site-detail-${escapeHtml(table)}">${list}</div>
+    </section>
+  `;
+}
+
+function toggleSiteDetailGroup(table) {
+  const content = document.getElementById(`site-detail-${table}`);
+  const button = document.querySelector(`[data-site-detail-toggle="${table}"]`);
+  if (!content || !button) return;
+  const willOpen = content.classList.contains("hidden");
+  document.querySelectorAll(".related-content").forEach((item) => item.classList.add("hidden"));
+  document.querySelectorAll("[data-site-detail-toggle]").forEach((item) => item.setAttribute("aria-expanded", "false"));
+  if (willOpen) {
+    content.classList.remove("hidden");
+    button.setAttribute("aria-expanded", "true");
+  }
 }
 
 function fieldLabel(table, field) {

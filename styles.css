@@ -395,26 +395,55 @@ tr:last-child td {
 
 .site-detail-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(260px, 1fr));
-  gap: 14px;
+  grid-template-columns: 1fr;
+  gap: 10px;
 }
 
 .related-group {
   display: grid;
-  gap: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 12px;
   background: #fbfcfb;
+  overflow: hidden;
 }
 
-.related-group h3 {
+.related-toggle {
   display: flex;
   justify-content: space-between;
   gap: 10px;
   align-items: center;
-  margin: 0;
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  padding: 0 14px;
+  background: #ffffff;
+  color: var(--ink);
   font-size: 15px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.related-toggle:hover,
+.related-toggle[aria-expanded="true"] {
+  background: var(--surface-muted);
+}
+
+.related-toggle strong {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #e7f3ee;
+  color: var(--primary-strong);
+  font-size: 12px;
+}
+
+.related-content {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid var(--line);
 }
 
 .related-group h3 span {
