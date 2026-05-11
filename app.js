@@ -196,6 +196,12 @@ function bindTableActions() {
       return;
     }
 
+    const calendarStatusButton = event.target.closest("[data-calendar-status]");
+    if (calendarStatusButton) {
+      updateCalendarEventStatus(calendarStatusButton.dataset.calendarEventId, calendarStatusButton.dataset.calendarStatus);
+      return;
+    }
+
     const editButton = event.target.closest("[data-edit-site]");
     if (!editButton) return;
     startSiteEdit(editButton.dataset.editSite);
@@ -638,6 +644,14 @@ function renderActivity() {
     ? reports.map((report) => activityItem(`${projectName(report.projectId)} / ${siteName(report.siteId)}`, `${report.date} - ${report.workDone}`)).join("")
     : activityItem("Henüz rapor yok", "Günlük rapor eklediğinde burada görünür.");
 
+  const tomorrow = addDays(new Date(), 1).toISOString().slice(0, 10);
+  const tomorrowEvents = state.calendarEvents
+    .filter((item) => item.date === tomorrow && item.status !== "Tamamlandı")
+    .sort((a, b) => siteName(a.siteId).localeCompare(siteName(b.siteId), "tr"));
+  document.getElementById("tomorrowEvents").innerHTML = tomorrowEvents.length
+    ? tomorrowEvents.map((item) => activityItem(`${siteName(item.siteId)} - ${item.status || "Planlandı"}`, item.title)).join("")
+    : activityItem("Yarın için planlı iş yok", "Takvime eklenen ve yarına kalan işler burada görünür.");
+
   const alerts = filtered("materials").slice(-5).reverse();
   document.getElementById("materialAlerts").innerHTML = alerts.length
     ? alerts.map((item) => activityItem(`${siteName(item.siteId)} - ${item.name}`, `${item.quantity || 0} ${item.unit || ""} · ${item.status || "Sipariş verildi"}`)).join("")
@@ -707,9 +721,11 @@ function renderCalendar() {
 }
 
 function calendarEventButton(item) {
+  const colors = siteColor(item.siteId);
   return `
-    <button class="calendar-event" type="button" data-calendar-event="${escapeHtml(item.id)}" title="${escapeHtml(item.title)}">
-      ${escapeHtml(siteName(item.siteId))}: ${escapeHtml(item.title)}
+    <button class="calendar-event status-${statusSlug(item.status)}" type="button" data-calendar-event="${escapeHtml(item.id)}" title="${escapeHtml(item.title)}" style="--site-color:${colors.color};--site-soft:${colors.soft};">
+      <span>${escapeHtml(siteName(item.siteId))}</span>
+      ${escapeHtml(item.title)}
     </button>
   `;
 }
@@ -737,12 +753,62 @@ function showCalendarEvent(id) {
       <div><dt>Durum</dt><dd>${escapeHtml(item.status || "-")}</dd></div>
       <div><dt>Not</dt><dd>${escapeHtml(item.notes || "-")}</dd></div>
     </dl>
+    <div class="modal-actions">
+      ${["Planlandı", "Ertelendi", "Tamamlandı"].map((status) => `
+        <button class="secondary table-action ${item.status === status ? "active-action" : ""}" type="button" data-calendar-event-id="${escapeHtml(item.id)}" data-calendar-status="${escapeHtml(status)}">${escapeHtml(status)}</button>
+      `).join("")}
+    </div>
   `;
   document.getElementById("eventModal").classList.remove("hidden");
 }
 
+function updateCalendarEventStatus(id, status) {
+  const index = state.calendarEvents.findIndex((item) => item.id === id);
+  if (index < 0) return;
+  state.calendarEvents[index] = { ...state.calendarEvents[index], status };
+  saveState();
+  render();
+  syncRecord("calendarEvents", state.calendarEvents[index]);
+  showCalendarEvent(id);
+  toast("Takvim işi güncellendi.");
+}
+
 function closeCalendarEvent() {
   document.getElementById("eventModal").classList.add("hidden");
+}
+
+function siteColor(siteId) {
+  const palette = [
+    ["#236c5b", "#e7f3ee"],
+    ["#9a4f1f", "#fff0e1"],
+    ["#365f9f", "#e8f0ff"],
+    ["#7c5a12", "#fff7d8"],
+    ["#8a3f68", "#fdebf5"],
+    ["#4f6f2a", "#edf5df"],
+    ["#5b557a", "#efedf8"],
+  ];
+  const index = Math.abs(hashString(siteId || "")) % palette.length;
+  const [color, soft] = palette[index];
+  return { color, soft };
+}
+
+function hashString(value) {
+  return String(value).split("").reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0, 0);
+}
+
+function statusSlug(status) {
+  return {
+    "Planlandı": "planned",
+    "Ertelendi": "delayed",
+    "Tamamlandı": "done",
+    "Devam ediyor": "active",
+  }[status] || "planned";
+}
+
+function addDays(date, days) {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + days);
+  return copy;
 }
 
 async function syncRecord(table, record) {
