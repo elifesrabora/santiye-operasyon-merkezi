@@ -9,7 +9,7 @@ const CONFIG = {
 const TABLES = {
   projects: ["name", "client", "location", "startDate", "endDate", "budget", "status", "notes"],
   sites: ["projectId", "name", "location", "manager", "status"],
-  tasks: ["projectId", "title", "assignedTo", "dueDate", "status", "notes"],
+  tasks: ["projectId", "siteId", "title", "assignedTo", "dueDate", "status", "notes"],
   calendarEvents: ["projectId", "siteId", "date", "title", "status", "notes"],
   reports: ["projectId", "siteId", "date", "workingHours", "workDone", "nextPlan", "incident", "notes", "attachmentName", "attachmentUrl"],
   payments: ["projectId", "period", "amount", "status", "notes"],
@@ -22,7 +22,7 @@ const TABLES = {
 const TABLE_LABELS = {
   projects: ["Proje", "İşveren", "Konum", "Başlangıç", "Bitiş", "Bütçe", "Durum", "Not"],
   sites: ["Proje", "Şantiye", "Konum", "Şef", "Durum"],
-  tasks: ["Proje", "Görev", "Atanan", "Termin", "Durum", "Not"],
+  tasks: ["Proje", "Şantiye", "Görev", "Atanan", "Termin", "Durum", "Not"],
   calendarEvents: ["Proje", "Şantiye", "Tarih", "İş", "Durum", "Not"],
   reports: ["Proje", "Şantiye", "Tarih", "Saat", "Yapılan işler", "Sonraki plan", "Olay", "Not", "Ek", "Bağlantı"],
   payments: ["Proje", "Dönem", "Tutar", "Durum", "Not"],
@@ -175,6 +175,10 @@ async function formToRecord(form, table) {
   }
 
   if (table === "calendarEvents" && record.siteId) {
+    record.projectId = state.sites.find((site) => site.id === record.siteId)?.projectId || record.projectId;
+  }
+
+  if (table === "tasks" && record.siteId) {
     record.projectId = state.sites.find((site) => site.id === record.siteId)?.projectId || record.projectId;
   }
 

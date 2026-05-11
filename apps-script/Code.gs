@@ -4,7 +4,7 @@ const DEFAULT_DRIVE_FOLDER_ID = "1kay5Ri3t_vLbRMuG22_tXslRsmwk4lg4";
 const SCHEMA = {
   projects: ["id", "createdAt", "createdBy", "name", "client", "startDate", "endDate", "status", "notes", "location", "budget"],
   sites: ["id", "createdAt", "createdBy", "projectId", "name", "location", "manager", "status"],
-  tasks: ["id", "createdAt", "createdBy", "projectId", "title", "assignedTo", "dueDate", "status", "notes"],
+  tasks: ["id", "createdAt", "createdBy", "projectId", "siteId", "title", "assignedTo", "dueDate", "status", "notes"],
   calendarEvents: ["id", "createdAt", "createdBy", "projectId", "siteId", "date", "title", "status", "notes"],
   reports: ["id", "createdAt", "createdBy", "projectId", "siteId", "date", "workDone", "notes", "workingHours", "nextPlan", "incident", "attachmentName", "attachmentUrl"],
   payments: ["id", "createdAt", "createdBy", "projectId", "period", "amount", "status", "notes"],
