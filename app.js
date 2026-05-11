@@ -513,7 +513,7 @@ function renderSiteDetail() {
 
 function siteDetailGroup(table, title, siteId) {
   const rows = state[table].filter((item) => item.siteId === siteId);
-  const previewFields = TABLES[table].filter((field) => field !== "projectId" && field !== "siteId").slice(0, 4);
+  const previewFields = siteDetailFields(table);
   const list = rows.length
     ? rows
         .slice()
@@ -525,7 +525,10 @@ function siteDetailGroup(table, title, siteId) {
           return `
             <div class="related-item">
               <div>${summary}</div>
-              <button class="secondary table-action" type="button" data-edit-table="${escapeHtml(table)}" data-edit-record="${escapeHtml(row.id)}">Düzenle</button>
+              <div class="related-actions">
+                ${siteDetailLinks(table, row)}
+                <button class="secondary table-action" type="button" data-edit-table="${escapeHtml(table)}" data-edit-record="${escapeHtml(row.id)}">Düzenle</button>
+              </div>
             </div>
           `;
         })
@@ -540,6 +543,29 @@ function siteDetailGroup(table, title, siteId) {
       <div class="related-content hidden" id="site-detail-${escapeHtml(table)}">${list}</div>
     </section>
   `;
+}
+
+function siteDetailFields(table) {
+  const preferred = {
+    reports: ["date", "workDone", "attachmentName"],
+    documents: ["title", "type", "fileName", "notes"],
+    tasks: ["title", "dueDate", "status", "notes"],
+    calendarEvents: ["date", "title", "status", "notes"],
+    personnel: ["date", "name", "job", "attendance"],
+    materials: ["date", "name", "quantity", "status"],
+  }[table];
+  return preferred || TABLES[table].filter((field) => field !== "projectId" && field !== "siteId").slice(0, 4);
+}
+
+function siteDetailLinks(table, row) {
+  const links = [];
+  if (table === "reports" && row.attachmentUrl) {
+    links.push(`<a class="secondary table-action action-link" href="${escapeHtml(row.attachmentUrl)}" target="_blank" rel="noreferrer">PDF Aç</a>`);
+  }
+  if (table === "documents" && row.fileUrl) {
+    links.push(`<a class="secondary table-action action-link" href="${escapeHtml(row.fileUrl)}" target="_blank" rel="noreferrer">Dosyayı Aç</a>`);
+  }
+  return links.join("");
 }
 
 function toggleSiteDetailGroup(table) {

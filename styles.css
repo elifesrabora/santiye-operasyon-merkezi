@@ -460,6 +460,19 @@ tr:last-child td {
   background: #ffffff;
 }
 
+.related-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
 .related-item > div {
   display: grid;
   gap: 6px;
