@@ -53,6 +53,7 @@ const TABLE_LABELS = {
 let state = loadState();
 let settings = loadSettings();
 let calendarCursor = new Date();
+let calendarView = "week";
 let selectedSiteId = "";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -111,15 +112,23 @@ function bindNavigation() {
 
 function bindCalendarControls() {
   document.getElementById("calendarPrevBtn").addEventListener("click", () => {
-    calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() - 1, 1);
+    calendarCursor = calendarView === "week" ? addDays(calendarCursor, -7) : new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() - 1, 1);
     renderCalendar();
   });
   document.getElementById("calendarNextBtn").addEventListener("click", () => {
-    calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + 1, 1);
+    calendarCursor = calendarView === "week" ? addDays(calendarCursor, 7) : new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + 1, 1);
     renderCalendar();
   });
   document.getElementById("calendarTodayBtn").addEventListener("click", () => {
     calendarCursor = new Date();
+    renderCalendar();
+  });
+  document.getElementById("calendarWeekViewBtn").addEventListener("click", () => {
+    calendarView = "week";
+    renderCalendar();
+  });
+  document.getElementById("calendarMonthViewBtn").addEventListener("click", () => {
+    calendarView = "month";
     renderCalendar();
   });
   document.getElementById("calendarSiteFilter").addEventListener("change", renderCalendar);
@@ -687,21 +696,34 @@ function ganttRow(project) {
 }
 
 function renderCalendar() {
-  const today = new Date();
   const selectedProjectId = document.getElementById("projectFilter").value;
   const selectedSiteId = document.getElementById("calendarSiteFilter").value;
+  const events = state.calendarEvents
+    .filter((item) => !selectedProjectId || item.projectId === selectedProjectId)
+    .filter((item) => !selectedSiteId || item.siteId === selectedSiteId);
+
+  document.getElementById("calendarGrid").className = calendarView === "week" ? "calendar-grid week-view" : "calendar-grid month-view";
+  document.getElementById("calendarWeekViewBtn").classList.toggle("active", calendarView === "week");
+  document.getElementById("calendarMonthViewBtn").classList.toggle("active", calendarView === "month");
+  document.getElementById("calendarEventCount").textContent = `${events.length} planlı iş`;
+
+  if (calendarView === "week") {
+    renderWeekCalendar(events);
+  } else {
+    renderMonthCalendar(events);
+  }
+  renderUpcomingCalendarEvents(events);
+}
+
+function renderMonthCalendar(events) {
+  const today = new Date();
   const start = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth(), 1);
   const days = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + 1, 0).getDate();
   const blanks = (start.getDay() + 6) % 7;
   const monthLabel = new Intl.DateTimeFormat("tr-TR", { month: "long", year: "numeric" }).format(start);
-  const events = state.calendarEvents
-    .filter((item) => !selectedProjectId || item.projectId === selectedProjectId)
-    .filter((item) => !selectedSiteId || item.siteId === selectedSiteId);
   const cells = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"].map((day) => `<div class="weekday">${day}</div>`);
 
   document.getElementById("calendarMonthTitle").textContent = monthLabel;
-  document.getElementById("calendarEventCount").textContent = `${events.length} planlı iş`;
-
   for (let i = 0; i < blanks; i += 1) cells.push("<div></div>");
   for (let day = 1; day <= days; day += 1) {
     const date = `${calendarCursor.getFullYear()}-${String(calendarCursor.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -717,7 +739,33 @@ function renderCalendar() {
     `);
   }
   document.getElementById("calendarGrid").innerHTML = cells.join("");
-  renderUpcomingCalendarEvents(events);
+}
+
+function renderWeekCalendar(events) {
+  const today = new Date().toISOString().slice(0, 10);
+  const weekStart = startOfWeek(calendarCursor);
+  const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
+  const formatter = new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "short" });
+  const label = `${formatter.format(weekDays[0])} - ${formatter.format(weekDays[6])} ${weekDays[6].getFullYear()}`;
+
+  document.getElementById("calendarMonthTitle").textContent = label;
+  document.getElementById("calendarGrid").innerHTML = weekDays
+    .map((date) => {
+      const iso = date.toISOString().slice(0, 10);
+      const dayEvents = events.filter((item) => item.date === iso);
+      return `
+        <section class="week-day ${iso === today ? "today" : ""}">
+          <div class="week-day-header">
+            <strong>${new Intl.DateTimeFormat("tr-TR", { weekday: "long" }).format(date)}</strong>
+            <span>${formatter.format(date)}</span>
+          </div>
+          <div class="day-events">
+            ${dayEvents.length ? dayEvents.map((item) => calendarEventButton(item)).join("") : `<div class="empty-state">Planlı iş yok.</div>`}
+          </div>
+        </section>
+      `;
+    })
+    .join("");
 }
 
 function calendarEventButton(item) {
@@ -808,6 +856,14 @@ function statusSlug(status) {
 function addDays(date, days) {
   const copy = new Date(date);
   copy.setDate(copy.getDate() + days);
+  return copy;
+}
+
+function startOfWeek(date) {
+  const copy = new Date(date);
+  const day = (copy.getDay() + 6) % 7;
+  copy.setDate(copy.getDate() - day);
+  copy.setHours(0, 0, 0, 0);
   return copy;
 }
 
