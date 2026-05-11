@@ -258,6 +258,8 @@ function bindOrderControls() {
 }
 
 function bindPersonnelControls() {
+  const personnelSiteFilter = document.getElementById("personnelSiteFilter");
+  const personnelFormSite = document.querySelector('form[data-form="personnel"] select[name="siteId"]');
   document.getElementById("insuredModeBtn").addEventListener("click", () => {
     personnelMode = "Sigortalı";
     renderPersonnel();
@@ -270,6 +272,14 @@ function bindPersonnelControls() {
     const button = event.target.closest("[data-attendance-cell]");
     if (!button) return;
     updatePersonnelAttendance(button.dataset.name, button.dataset.date);
+  });
+  personnelSiteFilter.addEventListener("change", () => {
+    if (personnelFormSite) personnelFormSite.value = personnelSiteFilter.value;
+    renderPersonnel();
+  });
+  personnelFormSite?.addEventListener("change", () => {
+    personnelSiteFilter.value = personnelFormSite.value;
+    renderPersonnel();
   });
 }
 
@@ -434,6 +444,7 @@ function renderSiteOptions() {
     select.innerHTML = `<option value="">${emptyLabel}</option>${options}`;
     select.value = current;
   });
+  syncPersonnelSiteSelection();
 }
 
 function renderMetrics() {
@@ -463,12 +474,15 @@ function renderTables() {
 function renderPersonnel() {
   const matrix = document.getElementById("personnelMatrix");
   if (!matrix) return;
+  syncPersonnelSiteSelection();
+  const selectedSite = selectedPersonnelSiteId();
+  const selectedSiteName = selectedSite ? siteName(selectedSite) : "Şantiye seç";
   const monthStart = new Date();
   const year = monthStart.getFullYear();
   const month = monthStart.getMonth();
   const days = new Date(year, month + 1, 0).getDate();
   const type = personnelMode;
-  const records = state.personnel.filter((item) => personnelType(item) === type);
+  const records = state.personnel.filter((item) => personnelType(item) === type && item.siteId === selectedSite);
   const names = personnelNames(records, type);
   const header = Array.from({ length: days }, (_, index) => `<div class="personnel-head">${index + 1}</div>`).join("");
   const rows = names
@@ -485,7 +499,7 @@ function renderPersonnel() {
 
   document.getElementById("insuredModeBtn").classList.toggle("active", type === "Sigortalı");
   document.getElementById("crewModeBtn").classList.toggle("active", type === "Ekip");
-  document.getElementById("personnelMatrixTitle").textContent = type === "Sigortalı" ? "Sigortalı Puantajı" : "Ekip Takibi";
+  document.getElementById("personnelMatrixTitle").textContent = `${type === "Sigortalı" ? "Sigortalı Puantajı" : "Ekip Takibi"} - ${selectedSiteName}`;
   document.getElementById("personnelNameLabel").firstChild.textContent = type === "Sigortalı" ? "Personel adı" : "Ekip adı";
   const nameInput = document.getElementById("personnelNameInput");
   if (type === "Ekip") {
@@ -498,8 +512,25 @@ function renderPersonnel() {
   matrix.innerHTML = `
     <div class="personnel-corner">${new Intl.DateTimeFormat("tr-TR", { month: "long", year: "numeric" }).format(monthStart)}</div>
     ${header}
-    ${rows || `<div class="empty-state personnel-empty">Henüz ${type === "Sigortalı" ? "personel" : "ekip"} kaydı yok.</div>`}
+    ${rows || `<div class="empty-state personnel-empty">${selectedSite ? `Bu şantiye için henüz ${type === "Sigortalı" ? "personel" : "ekip"} kaydı yok.` : "Puantaj için önce şantiye seç."}</div>`}
   `;
+}
+
+function syncPersonnelSiteSelection() {
+  const personnelSiteFilter = document.getElementById("personnelSiteFilter");
+  const personnelFormSite = document.querySelector('form[data-form="personnel"] select[name="siteId"]');
+  const personnelFormProject = document.querySelector('form[data-form="personnel"] select[name="projectId"]');
+  if (!personnelSiteFilter || !personnelFormSite) return;
+  const fallbackSiteId = state.sites[0]?.id || "";
+  const selected = personnelSiteFilter.value || personnelFormSite.value || fallbackSiteId;
+  personnelSiteFilter.value = selected;
+  personnelFormSite.value = selected;
+  const site = state.sites.find((item) => item.id === selected);
+  if (site && personnelFormProject) personnelFormProject.value = site.projectId || personnelFormProject.value;
+}
+
+function selectedPersonnelSiteId() {
+  return document.getElementById("personnelSiteFilter")?.value || document.querySelector('form[data-form="personnel"] select[name="siteId"]')?.value || state.sites[0]?.id || "";
 }
 
 function personnelType(item) {
@@ -513,8 +544,8 @@ function personnelNames(records, type) {
 }
 
 function updatePersonnelAttendance(name, date) {
-  const siteSelect = document.querySelector('form[data-form="personnel"] select[name="siteId"]');
-  const siteId = siteSelect?.value || state.sites[0]?.id || "";
+  const siteId = selectedPersonnelSiteId();
+  if (!siteId) return;
   const projectId = state.sites.find((site) => site.id === siteId)?.projectId || document.querySelector('form[data-form="personnel"] select[name="projectId"]')?.value || "";
   const index = findPersonnelIndex(name, date, personnelMode, siteId);
   const next = nextAttendance(index >= 0 ? state.personnel[index].attendance : "");

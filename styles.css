@@ -528,7 +528,16 @@ tr:last-child td {
 }
 
 .personnel-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: end;
   margin-bottom: 12px;
+}
+
+.personnel-site-filter {
+  min-width: min(100%, 280px);
 }
 
 .personnel-entry {
