@@ -377,6 +377,12 @@ tr:last-child td {
   padding: 0 12px;
 }
 
+.table-action.active-action {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
 .row-actions {
   display: flex;
   flex-wrap: wrap;

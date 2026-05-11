@@ -6,6 +6,24 @@ const CONFIG = {
   settingsKey: "santiye-operasyon-settings-v1",
 };
 
+const ORDER_UNITS = {
+  Beton: "m³",
+  Demir: "ton",
+  Parke: "m²",
+  Seramik: "m²",
+  Fayans: "m²",
+  Kum: "ton",
+  Çimento: "torba",
+  Tuğla: "adet",
+  Gazbeton: "adet",
+  Alçı: "torba",
+  Boya: "lt",
+  Kablo: "metre",
+  Boru: "metre",
+  Kereste: "m³",
+  Diğer: "adet",
+};
+
 const TABLES = {
   projects: ["name", "client", "location", "startDate", "endDate", "budget", "status", "notes"],
   sites: ["projectId", "name", "location", "manager", "status"],
@@ -14,7 +32,7 @@ const TABLES = {
   reports: ["projectId", "siteId", "date", "workingHours", "workDone", "nextPlan", "incident", "notes", "attachmentName", "attachmentUrl"],
   payments: ["projectId", "period", "amount", "status", "notes"],
   personnel: ["projectId", "siteId", "date", "name", "job", "attendance"],
-  materials: ["projectId", "date", "name", "spec", "quantity", "unit", "supplier", "unitPrice", "total", "minimum", "status", "notes"],
+  materials: ["projectId", "siteId", "date", "name", "spec", "quantity", "unit", "supplier", "unitPrice", "total", "status", "notes"],
   documents: ["projectId", "siteId", "title", "type", "fileName", "fileUrl", "mimeType", "notes"],
   users: ["name", "username", "email", "role", "status", "permissions"],
 };
@@ -27,7 +45,7 @@ const TABLE_LABELS = {
   reports: ["Proje", "Şantiye", "Tarih", "Saat", "Yapılan işler", "Sonraki plan", "Olay", "Not", "Ek", "Bağlantı"],
   payments: ["Proje", "Dönem", "Tutar", "Durum", "Not"],
   personnel: ["Proje", "Şantiye", "Tarih", "Personel", "Meslek", "Durum"],
-  materials: ["Proje", "Tarih", "Malzeme", "Özellik", "Miktar", "Birim", "Tedarikçi", "Birim fiyat", "Toplam", "Minimum", "Durum", "Not"],
+  materials: ["Proje", "Şantiye", "Tarih", "Sipariş cinsi", "Özellik", "Miktar", "Birim", "Tedarikçi", "Birim fiyat", "Toplam", "Durum", "Not"],
   documents: ["Proje", "Şantiye", "Başlık", "Tür", "Dosya", "Bağlantı", "Mime", "Açıklama"],
   users: ["Ad", "Kullanıcı", "E-posta", "Rol", "Durum", "İzinler"],
 };
@@ -41,6 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindNavigation();
   bindForms();
   bindTableActions();
+  bindOrderControls();
   bindCalendarControls();
   bindSettings();
   setDefaultDates();
@@ -151,6 +170,12 @@ function bindForms() {
 
 function bindTableActions() {
   document.addEventListener("click", (event) => {
+    const orderStatusButton = event.target.closest("[data-order-status]");
+    if (orderStatusButton) {
+      updateOrderStatus(orderStatusButton.dataset.orderId, orderStatusButton.dataset.orderStatus);
+      return;
+    }
+
     const openSiteButton = event.target.closest("[data-open-site]");
     if (openSiteButton) {
       selectedSiteId = openSiteButton.dataset.openSite;
@@ -175,6 +200,14 @@ function bindTableActions() {
     form.reset();
     clearSiteEditMode();
     setDefaultDates();
+  });
+}
+
+function bindOrderControls() {
+  document.getElementById("orderTypeSelect").addEventListener("change", (event) => {
+    const form = event.target.closest("form");
+    const unit = ORDER_UNITS[event.target.value] || "";
+    if (unit) form.elements.namedItem("unit").value = unit;
   });
 }
 
@@ -234,6 +267,13 @@ async function formToRecord(form, table) {
 
   if (table === "materials" && !record.total && record.quantity && record.unitPrice) {
     record.total = String(Number(record.quantity) * Number(record.unitPrice));
+  }
+
+  if (table === "materials") {
+    if (record.siteId) {
+      record.projectId = state.sites.find((site) => site.id === record.siteId)?.projectId || record.projectId;
+    }
+    record.unit = record.unit || ORDER_UNITS[record.name] || "";
   }
 
   if (table === "calendarEvents" && record.siteId) {
@@ -369,7 +409,7 @@ function singular(table) {
 function tableMarkup(table, rows) {
   const labels = TABLE_LABELS[table];
   const fields = TABLES[table];
-  const hasActions = table === "sites";
+  const hasActions = table === "sites" || table === "materials";
   const head = `${labels.map((label) => `<th>${label}</th>`).join("")}${hasActions ? "<th>İşlem</th>" : ""}`;
   const body = rows.length
     ? rows
@@ -377,14 +417,39 @@ function tableMarkup(table, rows) {
         .reverse()
         .map((row) => {
           const cells = fields.map((field) => `<td>${formatCell(table, field, row[field], row)}</td>`).join("");
-          const actions = hasActions
-            ? `<td><div class="row-actions"><button class="secondary table-action" type="button" data-open-site="${escapeHtml(row.id)}">Aç</button><button class="secondary table-action" type="button" data-edit-site="${escapeHtml(row.id)}">Düzenle</button></div></td>`
-            : "";
+          const actions = hasActions ? `<td>${tableActions(table, row)}</td>` : "";
           return `<tr>${cells}${actions}</tr>`;
         })
         .join("")
     : `<tr><td colspan="${fields.length + (hasActions ? 1 : 0)}">Henüz kayıt yok.</td></tr>`;
   return `<thead><tr>${head}</tr></thead><tbody>${body}</tbody>`;
+}
+
+function tableActions(table, row) {
+  if (table === "sites") {
+    return `<div class="row-actions"><button class="secondary table-action" type="button" data-open-site="${escapeHtml(row.id)}">Aç</button><button class="secondary table-action" type="button" data-edit-site="${escapeHtml(row.id)}">Düzenle</button></div>`;
+  }
+  if (table === "materials") {
+    return `
+      <div class="row-actions">
+        ${["Sipariş verildi", "Sevkiyatta", "Teslim alındı"].map((status) => `
+          <button class="secondary table-action ${row.status === status ? "active-action" : ""}" type="button" data-order-id="${escapeHtml(row.id)}" data-order-status="${escapeHtml(status)}">${escapeHtml(status)}</button>
+        `).join("")}
+        <button class="secondary table-action" type="button" data-edit-table="materials" data-edit-record="${escapeHtml(row.id)}">Düzenle</button>
+      </div>
+    `;
+  }
+  return "";
+}
+
+function updateOrderStatus(id, status) {
+  const index = state.materials.findIndex((item) => item.id === id);
+  if (index < 0) return;
+  state.materials[index] = { ...state.materials[index], status };
+  saveState();
+  render();
+  syncRecord("materials", state.materials[index]);
+  toast("Sipariş durumu güncellendi.");
 }
 
 function renderSiteDetail() {
@@ -407,7 +472,7 @@ function renderSiteDetail() {
     ["calendarEvents", "Takvim İşleri"],
     ["reports", "Günlük Raporlar"],
     ["personnel", "Personel"],
-    ["materials", "Malzemeler"],
+    ["materials", "Siparişler"],
     ["documents", "Fotoğraf & PDF"],
   ];
 
@@ -546,10 +611,10 @@ function renderActivity() {
     ? reports.map((report) => activityItem(`${projectName(report.projectId)} / ${siteName(report.siteId)}`, `${report.date} - ${report.workDone}`)).join("")
     : activityItem("Henüz rapor yok", "Günlük rapor eklediğinde burada görünür.");
 
-  const alerts = filtered("materials").filter((item) => Number(item.minimum || 0) > 0 && Number(item.quantity || 0) <= Number(item.minimum || 0));
+  const alerts = filtered("materials").slice(-5).reverse();
   document.getElementById("materialAlerts").innerHTML = alerts.length
-    ? alerts.map((item) => activityItem(item.name, `${item.quantity || 0} ${item.unit || ""} kaldı`)).join("")
-    : activityItem("Kritik stok yok", "Minimum seviyenin altına düşen malzeme görünür.");
+    ? alerts.map((item) => activityItem(`${siteName(item.siteId)} - ${item.name}`, `${item.quantity || 0} ${item.unit || ""} · ${item.status || "Sipariş verildi"}`)).join("")
+    : activityItem("Sipariş yok", "Yeni sipariş eklediğinde burada görünür.");
 }
 
 function activityItem(title, detail) {
