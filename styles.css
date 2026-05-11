@@ -377,6 +377,77 @@ tr:last-child td {
   padding: 0 12px;
 }
 
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.site-detail-panel {
+  margin-top: 18px;
+}
+
+.site-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.related-group {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfcfb;
+}
+
+.related-group h3 {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin: 0;
+  font-size: 15px;
+}
+
+.related-group h3 span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.related-item {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.related-item > div {
+  display: grid;
+  gap: 6px;
+}
+
+.related-item span {
+  display: grid;
+  gap: 2px;
+  color: #33433d;
+  font-size: 13px;
+}
+
+.related-item strong {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.empty-state {
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .hidden {
   display: none !important;
 }
@@ -628,7 +699,8 @@ tr:last-child td {
   .topbar,
   .split,
   .dashboard-grid,
-  .calendar-layout {
+  .calendar-layout,
+  .site-detail-grid {
     grid-template-columns: 1fr;
   }
 

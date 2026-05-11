@@ -35,6 +35,7 @@ const TABLE_LABELS = {
 let state = loadState();
 let settings = loadSettings();
 let calendarCursor = new Date();
+let selectedSiteId = "";
 
 document.addEventListener("DOMContentLoaded", () => {
   bindNavigation();
@@ -135,7 +136,12 @@ function bindForms() {
       saveState();
       render();
       form.reset();
-      clearSiteEditMode();
+      if (table === "sites") {
+        selectedSiteId = item.id;
+        clearSiteEditMode();
+      } else {
+        clearFormEditMode(form);
+      }
       setDefaultDates();
       toast(editId ? "Kayıt güncellendi." : "Kayıt eklendi.");
       syncRecord(table, item);
@@ -145,6 +151,20 @@ function bindForms() {
 
 function bindTableActions() {
   document.addEventListener("click", (event) => {
+    const openSiteButton = event.target.closest("[data-open-site]");
+    if (openSiteButton) {
+      selectedSiteId = openSiteButton.dataset.openSite;
+      renderSiteDetail();
+      document.getElementById("siteDetailPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    const editRecordButton = event.target.closest("[data-edit-record]");
+    if (editRecordButton) {
+      startRecordEdit(editRecordButton.dataset.editTable, editRecordButton.dataset.editRecord);
+      return;
+    }
+
     const editButton = event.target.closest("[data-edit-site]");
     if (!editButton) return;
     startSiteEdit(editButton.dataset.editSite);
@@ -251,6 +271,7 @@ function render() {
   renderProjectOptions();
   renderMetrics();
   renderTables();
+  renderSiteDetail();
   renderActivity();
   renderGantt();
   renderCalendar();
@@ -356,12 +377,130 @@ function tableMarkup(table, rows) {
         .reverse()
         .map((row) => {
           const cells = fields.map((field) => `<td>${formatCell(table, field, row[field], row)}</td>`).join("");
-          const actions = hasActions ? `<td><button class="secondary table-action" type="button" data-edit-site="${escapeHtml(row.id)}">Düzenle</button></td>` : "";
+          const actions = hasActions
+            ? `<td><div class="row-actions"><button class="secondary table-action" type="button" data-open-site="${escapeHtml(row.id)}">Aç</button><button class="secondary table-action" type="button" data-edit-site="${escapeHtml(row.id)}">Düzenle</button></div></td>`
+            : "";
           return `<tr>${cells}${actions}</tr>`;
         })
         .join("")
     : `<tr><td colspan="${fields.length + (hasActions ? 1 : 0)}">Henüz kayıt yok.</td></tr>`;
   return `<thead><tr>${head}</tr></thead><tbody>${body}</tbody>`;
+}
+
+function renderSiteDetail() {
+  const panel = document.getElementById("siteDetailPanel");
+  if (!panel) return;
+  const site = state.sites.find((item) => item.id === selectedSiteId);
+  if (!site) {
+    panel.innerHTML = `
+      <div class="panel-header">
+        <h2>Şantiye Detayı</h2>
+        <span>Şantiye seç</span>
+      </div>
+      <div class="empty-state">Bir şantiyenin bağlı kayıtlarını görmek için Şantiyeler tablosundan <strong>Aç</strong> butonuna bas.</div>
+    `;
+    return;
+  }
+
+  const groups = [
+    ["tasks", "Görevler"],
+    ["calendarEvents", "Takvim İşleri"],
+    ["reports", "Günlük Raporlar"],
+    ["personnel", "Personel"],
+    ["materials", "Malzemeler"],
+    ["documents", "Fotoğraf & PDF"],
+  ];
+
+  panel.innerHTML = `
+    <div class="panel-header">
+      <div>
+        <h2>${escapeHtml(site.name)}</h2>
+        <span>${escapeHtml(site.location || "Konum girilmemiş")} · ${escapeHtml(site.status || "-")}</span>
+      </div>
+      <button class="secondary" type="button" data-edit-site="${escapeHtml(site.id)}">Şantiyeyi Düzenle</button>
+    </div>
+    <div class="site-detail-grid">
+      ${groups.map(([table, title]) => siteDetailGroup(table, title, site.id)).join("")}
+    </div>
+  `;
+}
+
+function siteDetailGroup(table, title, siteId) {
+  const rows = state[table].filter((item) => item.siteId === siteId);
+  const previewFields = TABLES[table].filter((field) => field !== "projectId" && field !== "siteId").slice(0, 4);
+  const list = rows.length
+    ? rows
+        .slice()
+        .reverse()
+        .map((row) => {
+          const summary = previewFields
+            .map((field) => `<span><strong>${escapeHtml(fieldLabel(table, field))}</strong>${formatCell(table, field, row[field], row)}</span>`)
+            .join("");
+          return `
+            <div class="related-item">
+              <div>${summary}</div>
+              <button class="secondary table-action" type="button" data-edit-table="${escapeHtml(table)}" data-edit-record="${escapeHtml(row.id)}">Düzenle</button>
+            </div>
+          `;
+        })
+        .join("")
+    : `<div class="empty-state">Kayıt yok.</div>`;
+  return `<section class="related-group"><h3>${escapeHtml(title)} <span>${rows.length}</span></h3>${list}</section>`;
+}
+
+function fieldLabel(table, field) {
+  const index = TABLES[table].indexOf(field);
+  return TABLE_LABELS[table][index] || field;
+}
+
+function startRecordEdit(table, id) {
+  if (table === "sites") {
+    startSiteEdit(id);
+    return;
+  }
+  const record = state[table]?.find((item) => item.id === id);
+  const form = document.querySelector(`form[data-form="${table}"]`);
+  if (!record || !form) return;
+  switchToView(viewForTable(table));
+  form.dataset.editId = id;
+  Object.entries(record).forEach(([key, value]) => {
+    const field = form.elements.namedItem(key);
+    if (field && field.type !== "file") field.value = value || "";
+  });
+  const submit = form.querySelector('button[type="submit"]');
+  if (submit) {
+    submit.dataset.defaultText = submit.dataset.defaultText || submit.textContent;
+    submit.textContent = "Değişiklikleri Kaydet";
+  }
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function clearFormEditMode(form) {
+  delete form.dataset.editId;
+  const submit = form.querySelector('button[type="submit"]');
+  if (submit?.dataset.defaultText) submit.textContent = submit.dataset.defaultText;
+}
+
+function switchToView(viewId) {
+  const button = document.querySelector(`.nav-item[data-view="${viewId}"]`);
+  const view = document.getElementById(viewId);
+  if (!button || !view) return;
+  document.querySelectorAll(".nav-item").forEach((item) => item.classList.remove("active"));
+  document.querySelectorAll(".view").forEach((item) => item.classList.remove("active"));
+  button.classList.add("active");
+  view.classList.add("active");
+  document.getElementById("pageTitle").textContent = button.textContent;
+}
+
+function viewForTable(table) {
+  return {
+    tasks: "tasks",
+    calendarEvents: "calendar",
+    reports: "reports",
+    personnel: "personnel",
+    materials: "materials",
+    documents: "documents",
+  }[table] || table;
 }
 
 function startSiteEdit(id) {
