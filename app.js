@@ -487,6 +487,12 @@ function renderPersonnel() {
   document.getElementById("crewModeBtn").classList.toggle("active", type === "Ekip");
   document.getElementById("personnelMatrixTitle").textContent = type === "Sigortalı" ? "Sigortalı Puantajı" : "Ekip Takibi";
   document.getElementById("personnelNameLabel").firstChild.textContent = type === "Sigortalı" ? "Personel adı" : "Ekip adı";
+  const nameInput = document.getElementById("personnelNameInput");
+  if (type === "Ekip") {
+    nameInput.setAttribute("list", "crewNameOptions");
+  } else {
+    nameInput.removeAttribute("list");
+  }
   document.getElementById("personnelCount").textContent = `${records.length} kayıt`;
   matrix.style.setProperty("--days", days);
   matrix.innerHTML = `

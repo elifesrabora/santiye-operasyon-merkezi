@@ -115,8 +115,8 @@
         </section>
 
         <section class="view" id="projects">
-          <div class="split">
-            <form class="panel form-panel" data-form="projects">
+          <div class="split stacked-panels">
+            <form class="panel form-panel wide-form" data-form="projects">
               <h2>Proje Ekle</h2>
               <label>Proje adı<input name="name" required /></label>
               <label>Müşteri / İşveren<input name="client" /></label>
@@ -145,7 +145,7 @@
         </section>
 
         <section class="view" id="sites">
-          <div class="split">
+          <div class="split stacked-panels">
             <form class="panel form-panel site-form" data-form="sites">
               <h2 id="siteFormTitle">Şantiye Ekle</h2>
               <label>Bağlı proje<select name="projectId" data-project-select required></select></label>
@@ -167,8 +167,8 @@
         </section>
 
         <section class="view" id="tasks">
-          <div class="split">
-            <form class="panel form-panel" data-form="tasks">
+          <div class="split stacked-panels">
+            <form class="panel form-panel wide-form" data-form="tasks">
               <h2>Görev Ekle</h2>
               <label>Proje<select name="projectId" data-project-select required></select></label>
               <label>Şantiye<select name="siteId" data-site-select required></select></label>
@@ -187,8 +187,8 @@
         </section>
 
         <section class="view" id="reports">
-          <div class="split">
-            <form class="panel form-panel" data-form="reports">
+          <div class="split stacked-panels">
+            <form class="panel form-panel wide-form" data-form="reports">
               <h2>Günlük Rapor Gir</h2>
               <label>Proje<select name="projectId" data-project-select required></select></label>
               <label>Şantiye<select name="siteId" data-site-select required></select></label>
@@ -242,7 +242,7 @@
               <label>Proje<select name="projectId" data-project-select required></select></label>
               <label>Şantiye<select name="siteId" data-site-select required></select></label>
               <label>Tarih<input name="date" type="date" required /></label>
-              <label id="personnelNameLabel">Personel adı<input name="name" list="crewNameOptions" required /></label>
+              <label id="personnelNameLabel">Personel adı<input id="personnelNameInput" name="name" required /></label>
               <datalist id="crewNameOptions">
                 <option value="Elektrik tesisatı"></option>
                 <option value="Sıhhi tesisat"></option>
@@ -268,8 +268,8 @@
         </section>
 
         <section class="view" id="materials">
-          <div class="split">
-            <form class="panel form-panel" data-form="materials">
+          <div class="split stacked-panels">
+            <form class="panel form-panel wide-form" data-form="materials">
               <h2>Sipariş Ekle</h2>
               <label>Proje<select name="projectId" data-project-select required></select></label>
               <label>Şantiye<select name="siteId" data-site-select required></select></label>

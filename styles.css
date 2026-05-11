@@ -310,6 +310,10 @@ label {
   align-items: start;
 }
 
+.stacked-panels {
+  grid-template-columns: 1fr;
+}
+
 .form-panel {
   display: grid;
   gap: 14px;
@@ -349,13 +353,19 @@ table {
   overflow-wrap: anywhere;
 }
 
+.wide-form,
 .site-form {
   grid-template-columns: repeat(5, minmax(130px, 1fr)) auto;
   align-items: end;
 }
 
+.wide-form h2,
 .site-form h2 {
   grid-column: 1 / -1;
+}
+
+.wide-form textarea {
+  min-height: 44px;
 }
 
 th,
@@ -982,6 +992,7 @@ tr:last-child td {
   }
 
   .site-form,
+  .wide-form,
   .personnel-form {
     grid-template-columns: 1fr;
   }
