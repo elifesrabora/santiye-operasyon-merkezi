@@ -94,6 +94,14 @@ function upsert_(spreadsheetId, driveFolderId, table, record) {
     delete cleanRecord.fileData;
   }
 
+  if (table === "reports" && cleanRecord.fileData && cleanRecord.fileName) {
+    cleanRecord.attachmentUrl = saveFile_(driveFolderId, {
+      ...cleanRecord,
+      title: cleanRecord.attachmentName || cleanRecord.fileName,
+    });
+    delete cleanRecord.fileData;
+  }
+
   const existingRow = table === "users" ? findRowByFirstColumn_(sheet, cleanRecord.email) : findRowById_(sheet, cleanRecord.id);
   const values = headers.map((header) => cleanRecord[header] || "");
   if (existingRow > 0) {

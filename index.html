@@ -185,11 +185,12 @@
               <label>Şantiye<select name="siteId" data-site-select required></select></label>
               <label>Tarih<input name="date" type="date" required /></label>
               <label>Çalışma saati<input name="workingHours" placeholder="08:00-18:00" /></label>
-              <label>Yapılan işler<textarea name="workDone" rows="4" required></textarea></label>
+              <label>Yapılan işler<textarea name="workDone" rows="4" placeholder="Hazır PDF yüklüyorsan boş bırakabilirsin"></textarea></label>
               <label>Sonraki plan<textarea name="nextPlan" rows="3"></textarea></label>
               <label>Olay / kaza<textarea name="incident" rows="2"></textarea></label>
               <label>Risk / Not<textarea name="notes" rows="3"></textarea></label>
-              <label>Ek dosya adı<input name="attachmentName" /></label>
+              <label>Hazır PDF rapor<input name="attachmentFile" type="file" accept=".pdf,application/pdf" /></label>
+              <label>Ek dosya adı<input name="attachmentName" placeholder="Dosya seçersen otomatik dolar" /></label>
               <label>Ek dosya bağlantısı<input name="attachmentUrl" type="url" /></label>
               <button class="primary" type="submit">Raporu Kaydet</button>
             </form>

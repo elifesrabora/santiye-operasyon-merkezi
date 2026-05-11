@@ -198,6 +198,20 @@ async function formToRecord(form, table) {
     record[field] = formData.get(field)?.toString().trim() || "";
   }
 
+  if (table === "reports") {
+    const file = formData.get("attachmentFile");
+    if (file && file.size) {
+      record.attachmentName = record.attachmentName || file.name;
+      record.mimeType = file.type;
+      record.fileName = file.name;
+      record.fileData = await fileToBase64(file);
+      record.attachmentUrl = record.attachmentUrl || "";
+    }
+    if (!record.workDone && record.attachmentName) {
+      record.workDone = "Hazır PDF rapor yüklendi.";
+    }
+  }
+
   if (table === "materials" && !record.total && record.quantity && record.unitPrice) {
     record.total = String(Number(record.quantity) * Number(record.unitPrice));
   }
@@ -507,6 +521,12 @@ async function syncRecord(table, record) {
     if (table === "documents" && result.record?.fileUrl) {
       const index = state.documents.findIndex((item) => item.id === record.id);
       if (index >= 0) state.documents[index] = { ...state.documents[index], fileUrl: result.record.fileUrl, fileData: "" };
+      saveState();
+      renderTables();
+    }
+    if (table === "reports" && result.record?.attachmentUrl) {
+      const index = state.reports.findIndex((item) => item.id === record.id);
+      if (index >= 0) state.reports[index] = { ...state.reports[index], attachmentUrl: result.record.attachmentUrl, fileData: "" };
       saveState();
       renderTables();
     }
