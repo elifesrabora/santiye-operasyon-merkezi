@@ -10,6 +10,7 @@ const TABLES = {
   projects: ["name", "client", "location", "startDate", "endDate", "budget", "status", "notes"],
   sites: ["projectId", "name", "location", "manager", "status"],
   tasks: ["projectId", "title", "assignedTo", "dueDate", "status", "notes"],
+  calendarEvents: ["projectId", "siteId", "date", "title", "status", "notes"],
   reports: ["projectId", "siteId", "date", "workingHours", "workDone", "nextPlan", "incident", "notes", "attachmentName", "attachmentUrl"],
   payments: ["projectId", "period", "amount", "status", "notes"],
   personnel: ["projectId", "siteId", "date", "name", "job", "attendance"],
@@ -22,6 +23,7 @@ const TABLE_LABELS = {
   projects: ["Proje", "İşveren", "Konum", "Başlangıç", "Bitiş", "Bütçe", "Durum", "Not"],
   sites: ["Proje", "Şantiye", "Konum", "Şef", "Durum"],
   tasks: ["Proje", "Görev", "Atanan", "Termin", "Durum", "Not"],
+  calendarEvents: ["Proje", "Şantiye", "Tarih", "İş", "Durum", "Not"],
   reports: ["Proje", "Şantiye", "Tarih", "Saat", "Yapılan işler", "Sonraki plan", "Olay", "Not", "Ek", "Bağlantı"],
   payments: ["Proje", "Dönem", "Tutar", "Durum", "Not"],
   personnel: ["Proje", "Şantiye", "Tarih", "Personel", "Meslek", "Durum"],
@@ -32,10 +34,12 @@ const TABLE_LABELS = {
 
 let state = loadState();
 let settings = loadSettings();
+let calendarCursor = new Date();
 
 document.addEventListener("DOMContentLoaded", () => {
   bindNavigation();
   bindForms();
+  bindCalendarControls();
   bindSettings();
   setDefaultDates();
   render();
@@ -82,6 +86,31 @@ function bindNavigation() {
   document.getElementById("refreshBtn").addEventListener("click", syncFromRemote);
   document.getElementById("exportPdfBtn").addEventListener("click", () => window.print());
   document.getElementById("projectFilter").addEventListener("change", render);
+}
+
+function bindCalendarControls() {
+  document.getElementById("calendarPrevBtn").addEventListener("click", () => {
+    calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() - 1, 1);
+    renderCalendar();
+  });
+  document.getElementById("calendarNextBtn").addEventListener("click", () => {
+    calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + 1, 1);
+    renderCalendar();
+  });
+  document.getElementById("calendarTodayBtn").addEventListener("click", () => {
+    calendarCursor = new Date();
+    renderCalendar();
+  });
+  document.getElementById("calendarSiteFilter").addEventListener("change", renderCalendar);
+  document.getElementById("calendarGrid").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-calendar-event]");
+    if (!button) return;
+    showCalendarEvent(button.dataset.calendarEvent);
+  });
+  document.getElementById("eventModalClose").addEventListener("click", closeCalendarEvent);
+  document.getElementById("eventModal").addEventListener("click", (event) => {
+    if (event.target.id === "eventModal") closeCalendarEvent();
+  });
 }
 
 function bindForms() {
@@ -143,6 +172,10 @@ async function formToRecord(form, table) {
 
   if (table === "materials" && !record.total && record.quantity && record.unitPrice) {
     record.total = String(Number(record.quantity) * Number(record.unitPrice));
+  }
+
+  if (table === "calendarEvents" && record.siteId) {
+    record.projectId = state.sites.find((site) => site.id === record.siteId)?.projectId || record.projectId;
   }
 
   if (table === "documents") {
@@ -219,9 +252,10 @@ function renderSiteOptions() {
   const options = state.sites
     .map((site) => `<option value="${escapeHtml(site.id)}">${escapeHtml(site.name)}</option>`)
     .join("");
-  document.querySelectorAll("[data-site-select]").forEach((select) => {
+  document.querySelectorAll("[data-site-select], [data-calendar-site-select]").forEach((select) => {
     const current = select.value;
-    select.innerHTML = `<option value="">Şantiye seç</option>${options}`;
+    const emptyLabel = select.id === "calendarSiteFilter" ? "Tüm şantiyeler" : "Şantiye seç";
+    select.innerHTML = `<option value="">${emptyLabel}</option>${options}`;
     select.value = current;
   });
 }
@@ -255,6 +289,7 @@ function singular(table) {
     projects: "project",
     sites: "site",
     tasks: "task",
+    calendarEvents: "calendarEvent",
     reports: "report",
     payments: "payment",
     personnel: "personnel",
@@ -336,19 +371,75 @@ function ganttRow(project) {
 
 function renderCalendar() {
   const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), 1);
-  const days = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const selectedProjectId = document.getElementById("projectFilter").value;
+  const selectedSiteId = document.getElementById("calendarSiteFilter").value;
+  const start = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth(), 1);
+  const days = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + 1, 0).getDate();
   const blanks = (start.getDay() + 6) % 7;
-  const cells = [];
+  const monthLabel = new Intl.DateTimeFormat("tr-TR", { month: "long", year: "numeric" }).format(start);
+  const events = state.calendarEvents
+    .filter((item) => !selectedProjectId || item.projectId === selectedProjectId)
+    .filter((item) => !selectedSiteId || item.siteId === selectedSiteId);
+  const cells = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"].map((day) => `<div class="weekday">${day}</div>`);
+
+  document.getElementById("calendarMonthTitle").textContent = monthLabel;
+  document.getElementById("calendarEventCount").textContent = `${events.length} planlı iş`;
+
   for (let i = 0; i < blanks; i += 1) cells.push("<div></div>");
   for (let day = 1; day <= days; day += 1) {
-    const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const reportCount = state.reports.filter((report) => report.date === date).length;
-    const projectStarts = state.projects.filter((project) => project.startDate === date).length;
-    const label = [reportCount ? `${reportCount} rapor` : "", projectStarts ? `${projectStarts} başlangıç` : ""].filter(Boolean).join(" / ");
-    cells.push(`<div class="day"><strong>${day}</strong>${label ? `<span>${label}</span>` : ""}</div>`);
+    const date = `${calendarCursor.getFullYear()}-${String(calendarCursor.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const dayEvents = events.filter((item) => item.date === date);
+    const isToday = date === today.toISOString().slice(0, 10);
+    cells.push(`
+      <div class="day ${isToday ? "today" : ""}">
+        <strong>${day}</strong>
+        <div class="day-events">
+          ${dayEvents.map((item) => calendarEventButton(item)).join("")}
+        </div>
+      </div>
+    `);
   }
   document.getElementById("calendarGrid").innerHTML = cells.join("");
+  renderUpcomingCalendarEvents(events);
+}
+
+function calendarEventButton(item) {
+  return `
+    <button class="calendar-event" type="button" data-calendar-event="${escapeHtml(item.id)}" title="${escapeHtml(item.title)}">
+      ${escapeHtml(siteName(item.siteId))}: ${escapeHtml(item.title)}
+    </button>
+  `;
+}
+
+function renderUpcomingCalendarEvents(events) {
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = events
+    .filter((item) => item.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 8);
+  document.getElementById("upcomingEvents").innerHTML = upcoming.length
+    ? upcoming.map((item) => activityItem(`${item.date} - ${siteName(item.siteId)}`, item.title)).join("")
+    : activityItem("Planlı iş yok", "Şantiye için yeni iş eklediğinde burada görünür.");
+}
+
+function showCalendarEvent(id) {
+  const item = state.calendarEvents.find((event) => event.id === id);
+  if (!item) return;
+  document.getElementById("eventModalTitle").textContent = item.title || "Planlı iş";
+  document.getElementById("eventModalBody").innerHTML = `
+    <dl class="detail-list">
+      <div><dt>Şantiye</dt><dd>${escapeHtml(siteName(item.siteId))}</dd></div>
+      <div><dt>Proje</dt><dd>${escapeHtml(projectName(item.projectId))}</dd></div>
+      <div><dt>Tarih</dt><dd>${escapeHtml(item.date || "-")}</dd></div>
+      <div><dt>Durum</dt><dd>${escapeHtml(item.status || "-")}</dd></div>
+      <div><dt>Not</dt><dd>${escapeHtml(item.notes || "-")}</dd></div>
+    </dl>
+  `;
+  document.getElementById("eventModal").classList.remove("hidden");
+}
+
+function closeCalendarEvent() {
+  document.getElementById("eventModal").classList.add("hidden");
 }
 
 async function syncRecord(table, record) {

@@ -42,6 +42,7 @@ Apps Script `setup` çalışınca şu sekmeleri oluşturur:
 - `projects`
 - `sites`
 - `tasks`
+- `calendarEvents`
 - `reports`
 - `payments`
 - `personnel`

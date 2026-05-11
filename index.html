@@ -283,13 +283,48 @@
         </section>
 
         <section class="view" id="calendar">
+          <div class="calendar-layout">
+            <form class="panel form-panel" data-form="calendarEvents">
+              <h2>Şantiye İşi Planla</h2>
+              <label>Şantiye<select name="siteId" data-calendar-site-select required></select></label>
+              <label>Yapılacak iş<input name="title" placeholder="Temel betonu dökülecek" required /></label>
+              <label>Tarih<input name="date" type="date" required /></label>
+              <label>Durum
+                <select name="status">
+                  <option selected>Planlandı</option>
+                  <option>Devam ediyor</option>
+                  <option>Tamamlandı</option>
+                  <option>Ertelendi</option>
+                </select>
+              </label>
+              <label>Ayrıntı<textarea name="notes" rows="3"></textarea></label>
+              <button class="primary" type="submit">Takvime Kaydet</button>
+            </form>
+
+            <section class="panel">
+              <div class="panel-header calendar-header">
+                <div>
+                  <h2 id="calendarMonthTitle">Takvim</h2>
+                  <span id="calendarEventCount">0 planlı iş</span>
+                </div>
+                <div class="calendar-controls">
+                  <select id="calendarSiteFilter" data-calendar-site-select aria-label="Takvim şantiye filtresi">
+                    <option value="">Tüm şantiyeler</option>
+                  </select>
+                  <button class="secondary" id="calendarPrevBtn" type="button">Önceki</button>
+                  <button class="secondary" id="calendarTodayBtn" type="button">Bugün</button>
+                  <button class="secondary" id="calendarNextBtn" type="button">Sonraki</button>
+                </div>
+              </div>
+              <div class="calendar-grid" id="calendarGrid"></div>
+            </section>
+          </div>
+
           <section class="panel">
-            <div class="panel-header">
-              <h2>Takvim ve Gantt</h2>
-              <span>Gün / ay / yıl proje takibi</span>
-            </div>
-            <div class="calendar-grid" id="calendarGrid"></div>
+            <div class="panel-header"><h2>Yaklaşan İşler</h2><span>Seçili filtreye göre</span></div>
+            <div class="activity-list" id="upcomingEvents"></div>
           </section>
+
           <section class="panel">
             <div class="panel-header"><h2>Zaman Çizelgesi</h2><span>Projeler</span></div>
             <div class="gantt large" id="fullGanttBoard"></div>
@@ -331,6 +366,15 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="modal hidden" id="eventModal" role="dialog" aria-modal="true" aria-labelledby="eventModalTitle">
+      <div class="modal-card">
+        <div class="panel-header">
+          <h2 id="eventModalTitle">Planlı iş</h2>
+          <button class="secondary" id="eventModalClose" type="button">Kapat</button>
+        </div>
+        <div id="eventModalBody"></div>
+      </div>
+    </div>
     <script src="./app.js"></script>
   </body>
 </html>
