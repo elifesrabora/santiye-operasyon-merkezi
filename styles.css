@@ -315,6 +315,12 @@ label {
   gap: 14px;
 }
 
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .table-panel {
   min-width: 0;
 }
@@ -364,6 +370,15 @@ tr:last-child td {
   color: var(--primary-strong);
   font-weight: 800;
   white-space: nowrap;
+}
+
+.table-action {
+  min-height: 34px;
+  padding: 0 12px;
+}
+
+.hidden {
+  display: none !important;
 }
 
 .activity-list {

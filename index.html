@@ -139,13 +139,16 @@
         <section class="view" id="sites">
           <div class="split">
             <form class="panel form-panel" data-form="sites">
-              <h2>Şantiye Ekle</h2>
+              <h2 id="siteFormTitle">Şantiye Ekle</h2>
               <label>Bağlı proje<select name="projectId" data-project-select required></select></label>
               <label>Şantiye adı<input name="name" required /></label>
               <label>Konum<input name="location" /></label>
               <label>Şantiye şefi<input name="manager" /></label>
               <label>Durum<select name="status"><option>Aktif</option><option>Pasif</option><option>Tamamlandı</option></select></label>
-              <button class="primary" type="submit">Şantiyeyi Kaydet</button>
+              <div class="form-actions">
+                <button class="primary" id="siteSubmitBtn" type="submit">Şantiyeyi Kaydet</button>
+                <button class="secondary hidden" id="siteCancelEditBtn" type="button">Vazgeç</button>
+              </div>
             </form>
             <section class="panel table-panel">
               <div class="panel-header"><h2>Şantiyeler</h2><span id="siteCount">0 kayıt</span></div>

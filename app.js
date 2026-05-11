@@ -39,6 +39,7 @@ let calendarCursor = new Date();
 document.addEventListener("DOMContentLoaded", () => {
   bindNavigation();
   bindForms();
+  bindTableActions();
   bindCalendarControls();
   bindSettings();
   setDefaultDates();
@@ -119,14 +120,41 @@ function bindForms() {
       event.preventDefault();
       const table = form.dataset.form;
       const item = await formToRecord(form, table);
-      state[table].push(item);
+      const editId = form.dataset.editId;
+      if (editId) {
+        const existingIndex = state[table].findIndex((record) => record.id === editId);
+        if (existingIndex >= 0) {
+          item.id = editId;
+          item.createdAt = state[table][existingIndex].createdAt;
+          item.createdBy = state[table][existingIndex].createdBy;
+          state[table][existingIndex] = item;
+        }
+      } else {
+        state[table].push(item);
+      }
       saveState();
       render();
       form.reset();
+      clearSiteEditMode();
       setDefaultDates();
-      toast("Kayıt eklendi.");
+      toast(editId ? "Kayıt güncellendi." : "Kayıt eklendi.");
       syncRecord(table, item);
     });
+  });
+}
+
+function bindTableActions() {
+  document.addEventListener("click", (event) => {
+    const editButton = event.target.closest("[data-edit-site]");
+    if (!editButton) return;
+    startSiteEdit(editButton.dataset.editSite);
+  });
+
+  document.getElementById("siteCancelEditBtn").addEventListener("click", () => {
+    const form = document.querySelector('form[data-form="sites"]');
+    form.reset();
+    clearSiteEditMode();
+    setDefaultDates();
   });
 }
 
@@ -306,18 +334,44 @@ function singular(table) {
 function tableMarkup(table, rows) {
   const labels = TABLE_LABELS[table];
   const fields = TABLES[table];
-  const head = labels.map((label) => `<th>${label}</th>`).join("");
+  const hasActions = table === "sites";
+  const head = `${labels.map((label) => `<th>${label}</th>`).join("")}${hasActions ? "<th>İşlem</th>" : ""}`;
   const body = rows.length
     ? rows
         .slice()
         .reverse()
         .map((row) => {
           const cells = fields.map((field) => `<td>${formatCell(table, field, row[field], row)}</td>`).join("");
-          return `<tr>${cells}</tr>`;
+          const actions = hasActions ? `<td><button class="secondary table-action" type="button" data-edit-site="${escapeHtml(row.id)}">Düzenle</button></td>` : "";
+          return `<tr>${cells}${actions}</tr>`;
         })
         .join("")
-    : `<tr><td colspan="${fields.length}">Henüz kayıt yok.</td></tr>`;
+    : `<tr><td colspan="${fields.length + (hasActions ? 1 : 0)}">Henüz kayıt yok.</td></tr>`;
   return `<thead><tr>${head}</tr></thead><tbody>${body}</tbody>`;
+}
+
+function startSiteEdit(id) {
+  const site = state.sites.find((item) => item.id === id);
+  if (!site) return;
+  const form = document.querySelector('form[data-form="sites"]');
+  form.dataset.editId = id;
+  Object.entries(site).forEach(([key, value]) => {
+    const field = form.elements.namedItem(key);
+    if (field) field.value = value || "";
+  });
+  document.getElementById("siteFormTitle").textContent = "Şantiye Düzenle";
+  document.getElementById("siteSubmitBtn").textContent = "Değişiklikleri Kaydet";
+  document.getElementById("siteCancelEditBtn").classList.remove("hidden");
+  document.getElementById("sites").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function clearSiteEditMode() {
+  const form = document.querySelector('form[data-form="sites"]');
+  if (!form) return;
+  delete form.dataset.editId;
+  document.getElementById("siteFormTitle").textContent = "Şantiye Ekle";
+  document.getElementById("siteSubmitBtn").textContent = "Şantiyeyi Kaydet";
+  document.getElementById("siteCancelEditBtn").classList.add("hidden");
 }
 
 function formatCell(table, field, value, row) {
