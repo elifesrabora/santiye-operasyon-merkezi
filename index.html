@@ -28,7 +28,8 @@
           <button class="nav-item" data-view="reports">Günlük Rapor</button>
           <button class="nav-item" data-view="payments">Hakediş</button>
           <button class="nav-item" data-view="personnel">Personel</button>
-          <button class="nav-item" data-view="materials">Siparişler</button>
+          <button class="nav-item" data-view="materials">Beton ve Demir Siparişi</button>
+          <button class="nav-item" data-view="otherMaterials">Diğer Siparişler</button>
           <button class="nav-item" data-view="documents">Fotoğraf & PDF</button>
           <button class="nav-item" data-view="calendar">Takvim / Gantt</button>
           <button class="nav-item" data-view="users">Kullanıcılar</button>
@@ -304,6 +305,39 @@
             <section class="panel table-panel">
               <div class="panel-header"><h2 id="orderTableTitle">Beton Sipariş Tablosu</h2><span id="materialCount">0 kayıt</span></div>
               <div class="table-wrap"><table id="materialsTable"></table></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="otherMaterials">
+          <div class="split stacked-panels">
+            <div class="order-toolbar">
+              <label class="order-site-filter">Şantiye filtresi<select id="otherOrderSiteFilter" data-site-select></select></label>
+            </div>
+
+            <form class="panel form-panel wide-form other-order-form" data-form="otherMaterials">
+              <h2 id="otherOrderFormTitle">Diğer Sipariş Ekle</h2>
+              <input name="projectId" type="hidden" />
+              <label>Tarih<input name="date" type="date" required /></label>
+              <label>Şantiye<select name="siteId" data-site-select required></select></label>
+              <label>İlgili firma<input name="company" /></label>
+              <label>Yetkili kişi<input name="contact" /></label>
+              <label>Durum<input name="status" type="hidden" value="Sipariş verildi" /><span class="status-buttons" id="otherOrderStatusButtons"><button class="secondary active-action" type="button" data-other-form-status="Sipariş verildi">Sipariş verildi</button><button class="secondary" type="button" data-other-form-status="Ertelendi">Ertelendi</button><button class="secondary" type="button" data-other-form-status="Sevkiyatta">Sevkiyatta</button><button class="secondary" type="button" data-other-form-status="Teslim alındı">Teslim alındı</button></span></label>
+              <label>Malzeme satırları</label>
+              <div class="other-order-lines" id="otherOrderLines">
+                <div class="other-order-line">
+                  <label>Malzeme türü<input name="otherMaterialName" required /></label>
+                  <label>Miktar<input name="otherQuantity" type="number" min="0" step="0.01" required /></label>
+                  <label>Birim<input name="otherUnit" placeholder="adet, m², paket" /></label>
+                </div>
+              </div>
+              <button class="secondary" id="addOtherOrderLineBtn" type="button">Malzeme Satırı Ekle</button>
+              <label>Not<textarea name="notes" rows="2"></textarea></label>
+              <button class="primary" id="otherOrderSubmitBtn" type="submit">Diğer Siparişi Kaydet</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-header"><h2>Diğer Sipariş Tablosu</h2><span id="otherMaterialCount">0 kayıt</span></div>
+              <div class="table-wrap"><table id="otherMaterialsTable"></table></div>
             </section>
           </div>
         </section>

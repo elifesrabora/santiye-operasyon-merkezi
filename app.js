@@ -45,7 +45,7 @@ const TABLES = {
   reports: ["projectId", "siteId", "date", "workingHours", "workDone", "nextPlan", "incident", "notes", "attachmentName", "attachmentUrl"],
   payments: ["projectId", "period", "amount", "status", "notes"],
   personnel: ["projectId", "siteId", "date", "personType", "name", "job", "attendance"],
-  materials: ["projectId", "siteId", "date", "name", "deliveryNo", "concreteClass", "diameter", "pourArea", "quantity", "unit", "status", "notes"],
+  materials: ["projectId", "siteId", "date", "name", "deliveryNo", "concreteClass", "diameter", "pourArea", "quantity", "unit", "company", "contact", "status", "notes"],
   documents: ["projectId", "siteId", "title", "type", "fileName", "fileUrl", "mimeType", "notes"],
   users: ["name", "username", "email", "role", "status", "permissions"],
 };
@@ -58,7 +58,7 @@ const TABLE_LABELS = {
   reports: ["Proje", "Şantiye", "Tarih", "Saat", "Yapılan işler", "Sonraki plan", "Olay", "Not", "Ek", "Bağlantı"],
   payments: ["Proje", "Dönem", "Tutar", "Durum", "Not"],
   personnel: ["Proje", "Şantiye", "Tarih", "Tip", "İsim", "Meslek/Ekip", "Durum"],
-  materials: ["Proje", "Şantiye", "Tarih", "Tür", "İrsaliye", "Beton sınıfı", "Çap", "Dökülecek alan", "Miktar", "Birim", "Durum", "Not"],
+  materials: ["Proje", "Şantiye", "Tarih", "Tür", "İrsaliye", "Beton sınıfı", "Çap", "Dökülecek alan", "Miktar", "Birim", "Firma", "Yetkili", "Durum", "Not"],
   documents: ["Proje", "Şantiye", "Başlık", "Tür", "Dosya", "Bağlantı", "Mime", "Açıklama"],
   users: ["Ad", "Kullanıcı", "E-posta", "Rol", "Durum", "İzinler"],
 };
@@ -164,6 +164,33 @@ function bindForms() {
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const table = form.dataset.form;
+      if (table === "otherMaterials") {
+        const editId = form.dataset.editId;
+        const records = formToOtherMaterialRecords(form, editId);
+        if (!records.length) {
+          toast("Diğer sipariş için en az bir malzeme ve miktar gir.");
+          return;
+        }
+        records.forEach((item) => {
+          const existingIndex = state.materials.findIndex((record) => record.id === item.id);
+          if (existingIndex >= 0) {
+            item.createdAt = state.materials[existingIndex].createdAt;
+            item.createdBy = state.materials[existingIndex].createdBy;
+            state.materials[existingIndex] = item;
+          } else {
+            state.materials.push(item);
+          }
+          syncRecord("materials", item);
+        });
+        saveState();
+        render();
+        form.reset();
+        clearFormEditMode(form);
+        resetOtherOrderForm();
+        setDefaultDates();
+        toast(editId ? "Diğer sipariş güncellendi." : "Diğer sipariş eklendi.");
+        return;
+      }
       if (table === "materials") {
         const editId = form.dataset.editId;
         const records = formToMaterialRecords(form, editId);
@@ -244,6 +271,12 @@ function bindTableActions() {
       return;
     }
 
+    const removeOtherOrderLineButton = event.target.closest("[data-remove-other-order-line]");
+    if (removeOtherOrderLineButton) {
+      removeOtherOrderLineButton.closest(".other-order-line")?.remove();
+      return;
+    }
+
     const openSiteButton = event.target.closest("[data-open-site]");
     if (openSiteButton) {
       selectedSiteId = openSiteButton.dataset.openSite;
@@ -298,6 +331,13 @@ function bindOrderControls() {
     const button = event.target.closest("[data-form-status]");
     if (!button) return;
     setOrderFormStatus(button.dataset.formStatus);
+  });
+  document.getElementById("otherOrderSiteFilter").addEventListener("change", renderOtherMaterials);
+  document.getElementById("addOtherOrderLineBtn").addEventListener("click", () => addOtherOrderLine());
+  document.getElementById("otherOrderStatusButtons").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-other-form-status]");
+    if (!button) return;
+    setOtherOrderFormStatus(button.dataset.otherFormStatus);
   });
 }
 
@@ -434,6 +474,7 @@ function render() {
   renderMetrics();
   renderTables();
   renderMaterials();
+  renderOtherMaterials();
   renderPersonnel();
   renderSiteDetail();
   renderActivity();
@@ -485,7 +526,7 @@ function renderSiteOptions() {
     .join("");
   document.querySelectorAll("[data-site-select], [data-calendar-site-select]").forEach((select) => {
     const current = select.value;
-    const emptyLabel = select.id === "calendarSiteFilter" || select.id === "orderSiteFilter" ? "Tüm şantiyeler" : "Şantiye seç";
+    const emptyLabel = select.id === "calendarSiteFilter" || select.id === "orderSiteFilter" || select.id === "otherOrderSiteFilter" ? "Tüm şantiyeler" : "Şantiye seç";
     select.innerHTML = `<option value="">${emptyLabel}</option>${options}`;
     select.value = current;
   });
@@ -546,12 +587,38 @@ function renderMaterials() {
   }
 }
 
+function renderOtherMaterials() {
+  const form = document.querySelector('form[data-form="otherMaterials"]');
+  const table = document.getElementById("otherMaterialsTable");
+  if (!form || !table) return;
+  const siteFilter = document.getElementById("otherOrderSiteFilter");
+  const rows = otherMaterialRows();
+  document.getElementById("otherMaterialCount").textContent = `${rows.length} kayıt`;
+  table.innerHTML = tableMarkup("materials", rows);
+
+  const selectedSite = form.elements.namedItem("siteId").value || siteFilter.value;
+  if (selectedSite) {
+    form.elements.namedItem("siteId").value = selectedSite;
+    const site = state.sites.find((item) => item.id === selectedSite);
+    if (site) form.elements.namedItem("projectId").value = site.projectId || "";
+  }
+}
+
 function materialRows() {
   const siteId = document.getElementById("orderSiteFilter")?.value || "";
   return filtered("materials").filter((item) => {
     const itemName = item.name || "";
     return itemName === materialMode && (!siteId || item.siteId === siteId);
   });
+}
+
+function otherMaterialRows() {
+  const siteId = document.getElementById("otherOrderSiteFilter")?.value || "";
+  return filtered("materials").filter((item) => isOtherMaterial(item) && (!siteId || item.siteId === siteId));
+}
+
+function isOtherMaterial(item) {
+  return item.name !== "Beton" && item.name !== "Demir";
 }
 
 function formToMaterialRecords(form, editId) {
@@ -567,6 +634,8 @@ function formToMaterialRecords(form, editId) {
     name: materialMode,
     deliveryNo: formData.get("deliveryNo")?.toString().trim() || "",
     unit: ORDER_UNITS[materialMode],
+    company: "",
+    contact: "",
     status: formData.get("status")?.toString().trim() || "Sipariş verildi",
     notes: formData.get("notes")?.toString().trim() || "",
   };
@@ -597,6 +666,43 @@ function formToMaterialRecords(form, editId) {
     .filter((item) => item.diameter && item.quantity);
 }
 
+function formToOtherMaterialRecords(form, editId) {
+  const formData = new FormData(form);
+  const siteId = formData.get("siteId")?.toString().trim() || "";
+  const site = state.sites.find((item) => item.id === siteId);
+  const base = {
+    createdAt: new Date().toISOString(),
+    createdBy: settings.userEmail || "local",
+    projectId: site?.projectId || formData.get("projectId")?.toString().trim() || "",
+    siteId,
+    date: formData.get("date")?.toString().trim() || "",
+    deliveryNo: "",
+    concreteClass: "",
+    diameter: "",
+    pourArea: "",
+    company: formData.get("company")?.toString().trim() || "",
+    contact: formData.get("contact")?.toString().trim() || "",
+    status: formData.get("status")?.toString().trim() || "Sipariş verildi",
+    notes: formData.get("notes")?.toString().trim() || "",
+  };
+
+  return Array.from(document.querySelectorAll("#otherOrderLines .other-order-line"))
+    .map((line, index) => {
+      const name = line.querySelector('[name="otherMaterialName"]')?.value.trim() || "";
+      const quantity = line.querySelector('[name="otherQuantity"]')?.value.trim() || "";
+      const unit = line.querySelector('[name="otherUnit"]')?.value.trim() || "";
+      return {
+        ...base,
+        id: editId && index === 0 ? editId : crypto.randomUUID(),
+        name,
+        spec: name,
+        quantity,
+        unit,
+      };
+    })
+    .filter((item) => item.name && item.quantity);
+}
+
 function addRebarLine(diameter = "", quantity = "") {
   const container = document.getElementById("rebarLines");
   const line = document.createElement("div");
@@ -609,12 +715,34 @@ function addRebarLine(diameter = "", quantity = "") {
   container.appendChild(line);
 }
 
+function addOtherOrderLine(name = "", quantity = "", unit = "") {
+  const container = document.getElementById("otherOrderLines");
+  const line = document.createElement("div");
+  line.className = "other-order-line";
+  line.innerHTML = `
+    <label>Malzeme türü<input name="otherMaterialName" value="${escapeHtml(name)}" /></label>
+    <label>Miktar<input name="otherQuantity" type="number" min="0" step="0.01" value="${escapeHtml(quantity)}" /></label>
+    <label>Birim<input name="otherUnit" placeholder="adet, m², paket" value="${escapeHtml(unit)}" /></label>
+    <button class="secondary table-action" type="button" data-remove-other-order-line>Sil</button>
+  `;
+  container.appendChild(line);
+}
+
 function setOrderFormStatus(status) {
   const form = document.querySelector('form[data-form="materials"]');
   if (!form) return;
   form.elements.namedItem("status").value = status;
   document.querySelectorAll("[data-form-status]").forEach((button) => {
     button.classList.toggle("active-action", button.dataset.formStatus === status);
+  });
+}
+
+function setOtherOrderFormStatus(status) {
+  const form = document.querySelector('form[data-form="otherMaterials"]');
+  if (!form) return;
+  form.elements.namedItem("status").value = status;
+  document.querySelectorAll("[data-other-form-status]").forEach((button) => {
+    button.classList.toggle("active-action", button.dataset.otherFormStatus === status);
   });
 }
 
@@ -633,6 +761,21 @@ function resetOrderForm() {
   setOrderFormStatus("Sipariş verildi");
   renderMaterials();
 }
+
+function resetOtherOrderForm() {
+  const form = document.querySelector('form[data-form="otherMaterials"]');
+  if (!form) return;
+  document.getElementById("otherOrderLines").innerHTML = `
+    <div class="other-order-line">
+      <label>Malzeme türü<input name="otherMaterialName" required /></label>
+      <label>Miktar<input name="otherQuantity" type="number" min="0" step="0.01" required /></label>
+      <label>Birim<input name="otherUnit" placeholder="adet, m², paket" /></label>
+    </div>
+  `;
+  setOtherOrderFormStatus("Sipariş verildi");
+  renderOtherMaterials();
+}
+
 
 function renderPersonnel() {
   const matrix = document.getElementById("personnelMatrix");
@@ -802,9 +945,10 @@ function tableActions(table, row) {
     return `<div class="row-actions"><button class="secondary table-action" type="button" data-open-site="${escapeHtml(row.id)}">Aç</button><button class="secondary table-action" type="button" data-edit-site="${escapeHtml(row.id)}">Düzenle</button></div>`;
   }
   if (table === "materials") {
+    const statuses = isOtherMaterial(row) ? ["Sipariş verildi", "Ertelendi", "Sevkiyatta", "Teslim alındı"] : ["Sipariş verildi", "Ertelendi", "Tamamlandı"];
     return `
       <div class="row-actions">
-        ${["Sipariş verildi", "Ertelendi", "Tamamlandı"].map((status) => `
+        ${statuses.map((status) => `
           <button class="secondary table-action ${row.status === status ? "active-action" : ""}" type="button" data-order-id="${escapeHtml(row.id)}" data-order-status="${escapeHtml(status)}">${escapeHtml(status)}</button>
         `).join("")}
         <button class="secondary table-action" type="button" data-edit-table="materials" data-edit-record="${escapeHtml(row.id)}">Düzenle</button>
@@ -840,12 +984,16 @@ function renderSiteDetail() {
   }
 
   const groups = [
+    ["materials:Beton", "Beton Siparişleri"],
+    ["materials:Demir", "Demir Siparişleri"],
+    ["materials:other", "Diğer Siparişler"],
     ["tasks", "Görevler"],
     ["calendarEvents", "Takvim İşleri"],
     ["reports", "Günlük Raporlar"],
-    ["materials", "Siparişler"],
     ["documents", "Fotoğraf & PDF"],
   ];
+  const concreteTotal = materialTotal(site.id, "Beton");
+  const rebarTotal = materialTotal(site.id, "Demir");
 
   panel.innerHTML = `
     <div class="panel-header">
@@ -855,14 +1003,39 @@ function renderSiteDetail() {
       </div>
       <button class="secondary" type="button" data-edit-site="${escapeHtml(site.id)}">Şantiyeyi Düzenle</button>
     </div>
+    <div class="site-material-summary">
+      <div class="summary-box">
+        <span>Toplam Beton</span>
+        <strong>${formatNumber(concreteTotal)} m³</strong>
+      </div>
+      <div class="summary-box">
+        <span>Toplam Demir</span>
+        <strong>${formatNumber(rebarTotal)} kg</strong>
+      </div>
+    </div>
     <div class="site-detail-grid">
-      ${groups.map(([table, title]) => siteDetailGroup(table, title, site.id)).join("")}
+      ${groups.map(([table, title]) => table.startsWith("materials:") ? siteDetailMaterialGroup(table.split(":")[1], title, site.id) : siteDetailGroup(table, title, site.id)).join("")}
     </div>
   `;
 }
 
+function materialTotal(siteId, type) {
+  return state.materials
+    .filter((item) => item.siteId === siteId && item.name === type)
+    .reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+}
+
+function siteDetailMaterialGroup(type, title, siteId) {
+  const rows = state.materials.filter((item) => item.siteId === siteId && (type === "other" ? isOtherMaterial(item) : item.name === type));
+  return siteDetailRows(`materials-${type}`, "materials", title, rows);
+}
+
 function siteDetailGroup(table, title, siteId) {
   const rows = state[table].filter((item) => item.siteId === siteId);
+  return siteDetailRows(table, table, title, rows);
+}
+
+function siteDetailRows(groupId, table, title, rows) {
   const previewFields = siteDetailFields(table);
   const list = rows.length
     ? rows
@@ -886,11 +1059,11 @@ function siteDetailGroup(table, title, siteId) {
     : `<div class="empty-state">Kayıt yok.</div>`;
   return `
     <section class="related-group">
-      <button class="related-toggle" type="button" data-site-detail-toggle="${escapeHtml(table)}" aria-expanded="false">
+      <button class="related-toggle" type="button" data-site-detail-toggle="${escapeHtml(groupId)}" aria-expanded="false">
         <span>${escapeHtml(title)}</span>
         <strong>${rows.length}</strong>
       </button>
-      <div class="related-content hidden" id="site-detail-${escapeHtml(table)}">${list}</div>
+      <div class="related-content hidden" id="site-detail-${escapeHtml(groupId)}">${list}</div>
     </section>
   `;
 }
@@ -902,7 +1075,7 @@ function siteDetailFields(table) {
     tasks: ["title", "dueDate", "status", "notes"],
     calendarEvents: ["date", "title", "status", "notes"],
     personnel: ["date", "name", "job", "attendance"],
-    materials: ["date", "name", "quantity", "status"],
+    materials: ["date", "deliveryNo", "name", "quantity", "status"],
   }[table];
   return preferred || TABLES[table].filter((field) => field !== "projectId" && field !== "siteId").slice(0, 4);
 }
@@ -964,8 +1137,13 @@ function startRecordEdit(table, id) {
 
 function startMaterialEdit(id) {
   const record = state.materials.find((item) => item.id === id);
+  if (!record) return;
+  if (isOtherMaterial(record)) {
+    startOtherMaterialEdit(record);
+    return;
+  }
   const form = document.querySelector('form[data-form="materials"]');
-  if (!record || !form) return;
+  if (!form) return;
   switchToView("materials");
   materialMode = record.name === "Demir" ? "Demir" : "Beton";
   form.dataset.editId = id;
@@ -980,6 +1158,23 @@ function startMaterialEdit(id) {
   }
   setOrderFormStatus(record.status || "Sipariş verildi");
   renderMaterials();
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function startOtherMaterialEdit(record) {
+  const form = document.querySelector('form[data-form="otherMaterials"]');
+  if (!form) return;
+  switchToView("otherMaterials");
+  form.dataset.editId = record.id;
+  resetOtherOrderForm();
+  Object.entries(record).forEach(([key, value]) => {
+    const field = form.elements.namedItem(key);
+    if (field && field.type !== "file") field.value = value || "";
+  });
+  document.getElementById("otherOrderLines").innerHTML = "";
+  addOtherOrderLine(record.name || "", record.quantity || "", record.unit || "");
+  setOtherOrderFormStatus(record.status || "Sipariş verildi");
+  renderOtherMaterials();
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -1348,6 +1543,10 @@ function siteName(id) {
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(value);
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 2 }).format(value || 0);
 }
 
 function escapeHtml(value) {
