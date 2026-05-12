@@ -270,47 +270,39 @@
 
         <section class="view" id="materials">
           <div class="split stacked-panels">
-            <form class="panel form-panel wide-form" data-form="materials">
-              <h2>Sipariş Ekle</h2>
-              <label>Proje<select name="projectId" data-project-select required></select></label>
+            <div class="order-toolbar">
+              <div class="segmented-control" aria-label="Sipariş türü">
+                <button class="active" id="concreteOrderBtn" type="button">Beton</button>
+                <button id="rebarOrderBtn" type="button">Demir</button>
+              </div>
+              <label class="order-site-filter">Şantiye filtresi<select id="orderSiteFilter" data-site-select></select></label>
+            </div>
+
+            <form class="panel form-panel wide-form order-form" data-form="materials">
+              <h2 id="orderFormTitle">Beton Siparişi Ekle</h2>
+              <input name="name" type="hidden" value="Beton" />
+              <input name="projectId" type="hidden" />
+              <label>Tarih<input name="date" type="date" required /></label>
+              <label>İrsaliye numarası<input name="deliveryNo" required /></label>
+              <label class="concrete-field">Beton sınıfı<select name="concreteClass"><option>C16</option><option>C20</option><option>C25</option><option>C30</option><option>C35</option><option>C40</option></select></label>
+              <label class="concrete-field">Miktar<input name="quantity" type="number" min="0" step="0.01" /></label>
+              <label>Birim<input name="unit" readonly value="m³" /></label>
               <label>Şantiye<select name="siteId" data-site-select required></select></label>
-              <label>Tarih<input name="date" type="date" /></label>
-              <label>Sipariş cinsi
-                <select name="name" id="orderTypeSelect" required>
-                  <option value="">Sipariş cinsi seç</option>
-                  <option>Beton</option>
-                  <option>Demir</option>
-                  <option>Parke</option>
-                  <option>Seramik</option>
-                  <option>Fayans</option>
-                  <option>Kum</option>
-                  <option>Çimento</option>
-                  <option>Tuğla</option>
-                  <option>Gazbeton</option>
-                  <option>Alçı</option>
-                  <option>Boya</option>
-                  <option>Kablo</option>
-                  <option>Boru</option>
-                  <option>Kereste</option>
-                  <option>Diğer</option>
-                </select>
-              </label>
-              <label>Özellik / sınıf<input name="spec" /></label>
-              <div class="field-row">
-                <label>Miktar<input name="quantity" type="number" step="0.01" required /></label>
-                <label>Birim<input name="unit" placeholder="adet, kg, m3" /></label>
+              <label class="concrete-field">Dökülecek alan<input name="pourArea" /></label>
+              <label class="rebar-field hidden">Demir kalemleri</label>
+              <div class="rebar-field rebar-lines hidden" id="rebarLines">
+                <div class="rebar-line">
+                  <label>Çap<input name="diameter" placeholder="Ø8, Ø10, Ø12" /></label>
+                  <label>Miktar<input name="rebarQuantity" type="number" min="0" step="0.01" /></label>
+                </div>
               </div>
-              <label>Tedarikçi<input name="supplier" /></label>
-              <div class="field-row">
-                <label>Birim fiyat<input name="unitPrice" type="number" min="0" step="0.01" /></label>
-                <label>Toplam<input name="total" type="number" min="0" step="0.01" /></label>
-              </div>
-              <label>Durum<select name="status"><option>Sipariş verildi</option><option>Sevkiyatta</option><option>Teslim alındı</option></select></label>
-              <label>Not<textarea name="notes" rows="3"></textarea></label>
-              <button class="primary" type="submit">Siparişi Kaydet</button>
+              <button class="secondary rebar-field hidden" id="addRebarLineBtn" type="button">Çap Satırı Ekle</button>
+              <label>Durum<input name="status" type="hidden" value="Sipariş verildi" /><span class="status-buttons" id="orderStatusButtons"><button class="secondary active-action" type="button" data-form-status="Sipariş verildi">Sipariş verildi</button><button class="secondary" type="button" data-form-status="Ertelendi">Ertelendi</button><button class="secondary" type="button" data-form-status="Tamamlandı">Tamamlandı</button></span></label>
+              <label>Not<textarea name="notes" rows="2"></textarea></label>
+              <button class="primary" id="orderSubmitBtn" type="submit">Beton Siparişini Kaydet</button>
             </form>
             <section class="panel table-panel">
-              <div class="panel-header"><h2>Sipariş Listesi</h2><span id="materialCount">0 kayıt</span></div>
+              <div class="panel-header"><h2 id="orderTableTitle">Beton Sipariş Tablosu</h2><span id="materialCount">0 kayıt</span></div>
               <div class="table-wrap"><table id="materialsTable"></table></div>
             </section>
           </div>

@@ -368,6 +368,45 @@ table {
   min-height: 44px;
 }
 
+.order-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: end;
+}
+
+.order-site-filter {
+  min-width: min(100%, 280px);
+}
+
+.order-form {
+  grid-template-columns: repeat(6, minmax(120px, 1fr)) auto;
+}
+
+.order-form h2 {
+  grid-column: 1 / -1;
+}
+
+.status-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rebar-lines {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 8px;
+}
+
+.rebar-line {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
 th,
 td {
   padding: 12px;
@@ -1002,7 +1041,12 @@ tr:last-child td {
 
   .site-form,
   .wide-form,
+  .order-form,
   .personnel-form {
+    grid-template-columns: 1fr;
+  }
+
+  .rebar-line {
     grid-template-columns: 1fr;
   }
 
