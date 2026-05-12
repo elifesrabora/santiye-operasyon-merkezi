@@ -70,9 +70,12 @@ let calendarView = "week";
 let selectedSiteId = "";
 let personnelMode = "Sigortalı";
 let materialMode = "Beton";
+let orderListMode = "Beton";
 
 document.addEventListener("DOMContentLoaded", () => {
+  setupEntryPanels();
   bindNavigation();
+  bindEntryTabs();
   bindForms();
   bindTableActions();
   bindOrderControls();
@@ -118,12 +121,73 @@ function bindNavigation() {
       button.classList.add("active");
       document.getElementById(button.dataset.view).classList.add("active");
       document.getElementById("pageTitle").textContent = button.textContent;
+      if (button.dataset.view === "sites") {
+        renderSiteTabs();
+        renderSiteDetail();
+      }
     });
   });
 
   document.getElementById("refreshBtn").addEventListener("click", syncFromRemote);
   document.getElementById("exportPdfBtn").addEventListener("click", () => window.print());
   document.getElementById("projectFilter").addEventListener("change", render);
+}
+
+function setupEntryPanels() {
+  const moves = [
+    ['form[data-form="sites"]', "entry-site"],
+    ['form[data-form="reports"]', "entry-report"],
+    ['form[data-form="materials"]', "entry-order-main"],
+    ['form[data-form="otherMaterials"]', "entry-order-other"],
+    ['form[data-form="personnel"]', "entry-personnel"],
+    ['form[data-form="documents"]', "entry-document"],
+    ['form[data-form="users"]', "entry-user"],
+  ];
+  moves.forEach(([selector, targetId]) => {
+    const form = document.querySelector(selector);
+    const target = document.getElementById(targetId);
+    if (form && target) target.appendChild(form);
+  });
+  document.querySelectorAll(".entry-source").forEach((source) => {
+    if (!source.closest("#materials")) source.remove();
+  });
+  const orderPanel = document.getElementById("entry-order");
+  if (orderPanel && !orderPanel.querySelector("[data-entry-order-mode]")) {
+    orderPanel.insertAdjacentHTML("afterbegin", `
+      <div class="entry-order-tabs">
+        <button class="active" type="button" data-entry-order-mode="Beton">Beton</button>
+        <button type="button" data-entry-order-mode="Demir">Demir</button>
+        <button type="button" data-entry-order-mode="Diğer">Diğer</button>
+      </div>
+    `);
+  }
+}
+
+function bindEntryTabs() {
+  document.querySelectorAll("[data-entry-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll("[data-entry-tab]").forEach((item) => item.classList.remove("active"));
+      document.querySelectorAll(".entry-panel").forEach((item) => item.classList.remove("active"));
+      button.classList.add("active");
+      document.getElementById(`entry-${button.dataset.entryTab}`)?.classList.add("active");
+    });
+  });
+  document.querySelectorAll("[data-entry-order-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll("[data-entry-order-mode]").forEach((item) => item.classList.remove("active"));
+      button.classList.add("active");
+      const mode = button.dataset.entryOrderMode;
+      document.getElementById("entry-order-main").classList.toggle("hidden", mode === "Diğer");
+      document.getElementById("entry-order-other").classList.toggle("hidden", mode !== "Diğer");
+      if (mode !== "Diğer") {
+        materialMode = mode;
+        resetOrderForm();
+      } else {
+        resetOtherOrderForm();
+      }
+    });
+  });
+  document.getElementById("entry-order-other")?.classList.add("hidden");
 }
 
 function bindCalendarControls() {
@@ -280,8 +344,17 @@ function bindTableActions() {
     const openSiteButton = event.target.closest("[data-open-site]");
     if (openSiteButton) {
       selectedSiteId = openSiteButton.dataset.openSite;
+      renderSiteTabs();
       renderSiteDetail();
       document.getElementById("siteDetailPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    const siteTabButton = event.target.closest("[data-site-tab]");
+    if (siteTabButton) {
+      selectedSiteId = siteTabButton.dataset.siteTab;
+      renderSiteTabs();
+      renderSiteDetail();
       return;
     }
 
@@ -317,24 +390,28 @@ function bindTableActions() {
 }
 
 function bindOrderControls() {
-  document.getElementById("concreteOrderBtn").addEventListener("click", () => {
-    materialMode = "Beton";
+  document.getElementById("concreteOrderBtn")?.addEventListener("click", () => {
+    orderListMode = "Beton";
     renderMaterials();
   });
-  document.getElementById("rebarOrderBtn").addEventListener("click", () => {
-    materialMode = "Demir";
+  document.getElementById("rebarOrderBtn")?.addEventListener("click", () => {
+    orderListMode = "Demir";
     renderMaterials();
   });
-  document.getElementById("orderSiteFilter").addEventListener("change", renderMaterials);
-  document.getElementById("addRebarLineBtn").addEventListener("click", () => addRebarLine());
-  document.getElementById("orderStatusButtons").addEventListener("click", (event) => {
+  document.getElementById("otherOrderBtn")?.addEventListener("click", () => {
+    orderListMode = "Diğer";
+    renderMaterials();
+  });
+  document.getElementById("orderSiteFilter")?.addEventListener("change", renderMaterials);
+  document.getElementById("addRebarLineBtn")?.addEventListener("click", () => addRebarLine());
+  document.getElementById("orderStatusButtons")?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-form-status]");
     if (!button) return;
     setOrderFormStatus(button.dataset.formStatus);
   });
-  document.getElementById("otherOrderSiteFilter").addEventListener("change", renderOtherMaterials);
-  document.getElementById("addOtherOrderLineBtn").addEventListener("click", () => addOtherOrderLine());
-  document.getElementById("otherOrderStatusButtons").addEventListener("click", (event) => {
+  document.getElementById("otherOrderSiteFilter")?.addEventListener("change", renderOtherMaterials);
+  document.getElementById("addOtherOrderLineBtn")?.addEventListener("click", () => addOtherOrderLine());
+  document.getElementById("otherOrderStatusButtons")?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-other-form-status]");
     if (!button) return;
     setOtherOrderFormStatus(button.dataset.otherFormStatus);
@@ -473,6 +550,7 @@ function render() {
   renderProjectOptions();
   renderMetrics();
   renderTables();
+  renderSiteTabs();
   renderMaterials();
   renderOtherMaterials();
   renderPersonnel();
@@ -558,6 +636,15 @@ function renderTables() {
   });
 }
 
+function renderSiteTabs() {
+  const target = document.getElementById("siteTabs");
+  if (!target) return;
+  if (!selectedSiteId && state.sites.length) selectedSiteId = state.sites[0].id;
+  target.innerHTML = state.sites.length
+    ? state.sites.map((site) => `<button class="${site.id === selectedSiteId ? "active" : ""}" type="button" data-site-tab="${escapeHtml(site.id)}">${escapeHtml(site.name)}</button>`).join("")
+    : `<div class="empty-state">Henüz kayıtlı şantiye yok. Kayıt Giriş bölümünden şantiye ekleyebilirsin.</div>`;
+}
+
 function renderMaterials() {
   const form = document.querySelector('form[data-form="materials"]');
   const table = document.getElementById("materialsTable");
@@ -566,8 +653,9 @@ function renderMaterials() {
   const siteFilter = document.getElementById("orderSiteFilter");
   const rows = materialRows();
 
-  document.getElementById("concreteOrderBtn").classList.toggle("active", isConcrete);
-  document.getElementById("rebarOrderBtn").classList.toggle("active", !isConcrete);
+  document.getElementById("concreteOrderBtn").classList.toggle("active", orderListMode === "Beton");
+  document.getElementById("rebarOrderBtn").classList.toggle("active", orderListMode === "Demir");
+  document.getElementById("otherOrderBtn").classList.toggle("active", orderListMode === "Diğer");
   document.querySelectorAll(".concrete-field").forEach((item) => item.classList.toggle("hidden", !isConcrete));
   document.querySelectorAll(".rebar-field").forEach((item) => item.classList.toggle("hidden", isConcrete));
   form.elements.namedItem("name").value = materialMode;
@@ -575,7 +663,7 @@ function renderMaterials() {
   form.elements.namedItem("unit").setAttribute("value", ORDER_UNITS[materialMode]);
   document.getElementById("orderFormTitle").textContent = `${materialMode} Siparişi ${form.dataset.editId ? "Düzenle" : "Ekle"}`;
   document.getElementById("orderSubmitBtn").textContent = `${materialMode} Siparişini ${form.dataset.editId ? "Güncelle" : "Kaydet"}`;
-  document.getElementById("orderTableTitle").textContent = `${materialMode} Sipariş Tablosu`;
+  document.getElementById("orderTableTitle").textContent = `${orderListMode} Sipariş Tablosu`;
   document.getElementById("materialCount").textContent = `${rows.length} kayıt`;
   table.innerHTML = tableMarkup("materials", rows);
 
@@ -608,7 +696,8 @@ function materialRows() {
   const siteId = document.getElementById("orderSiteFilter")?.value || "";
   return filtered("materials").filter((item) => {
     const itemName = item.name || "";
-    return itemName === materialMode && (!siteId || item.siteId === siteId);
+    const typeMatches = orderListMode === "Diğer" ? isOtherMaterial(item) : itemName === orderListMode;
+    return typeMatches && (!siteId || item.siteId === siteId);
   });
 }
 
@@ -984,13 +1073,12 @@ function renderSiteDetail() {
   }
 
   const groups = [
-    ["materials:Beton", "Beton Siparişleri"],
-    ["materials:Demir", "Demir Siparişleri"],
+    ["reports", "Günlük Rapor"],
+    ["materials:Beton", "Beton"],
+    ["materials:Demir", "Demir"],
     ["materials:other", "Diğer Siparişler"],
-    ["tasks", "Görevler"],
-    ["calendarEvents", "Takvim İşleri"],
-    ["reports", "Günlük Raporlar"],
-    ["documents", "Fotoğraf & PDF"],
+    ["calendarEvents", "Takvim"],
+    ["documents", "Evraklar"],
   ];
   const concreteTotal = materialTotal(site.id, "Beton");
   const rebarTotal = materialTotal(site.id, "Demir");
@@ -1003,6 +1091,15 @@ function renderSiteDetail() {
       </div>
       <button class="secondary" type="button" data-edit-site="${escapeHtml(site.id)}">Şantiyeyi Düzenle</button>
     </div>
+    <section class="site-info-box">
+      <h3>Şantiye Bilgileri</h3>
+      <div>
+        <span><strong>Proje</strong>${escapeHtml(projectName(site.projectId))}</span>
+        <span><strong>Konum</strong>${escapeHtml(site.location || "-")}</span>
+        <span><strong>Şantiye şefi</strong>${escapeHtml(site.manager || "-")}</span>
+        <span><strong>Durum</strong>${escapeHtml(site.status || "-")}</span>
+      </div>
+    </section>
     <div class="site-material-summary">
       <div class="summary-box">
         <span>Toplam Beton</span>
@@ -1122,6 +1219,7 @@ function startRecordEdit(table, id) {
   const form = document.querySelector(`form[data-form="${table}"]`);
   if (!record || !form) return;
   switchToView(viewForTable(table));
+  activateEntryTab(entryTabForTable(table));
   form.dataset.editId = id;
   Object.entries(record).forEach(([key, value]) => {
     const field = form.elements.namedItem(key);
@@ -1144,8 +1242,10 @@ function startMaterialEdit(id) {
   }
   const form = document.querySelector('form[data-form="materials"]');
   if (!form) return;
-  switchToView("materials");
+  switchToView("entries");
+  activateEntryTab("order");
   materialMode = record.name === "Demir" ? "Demir" : "Beton";
+  activateEntryOrderMode(materialMode);
   form.dataset.editId = id;
   resetOrderForm();
   Object.entries(record).forEach(([key, value]) => {
@@ -1164,7 +1264,9 @@ function startMaterialEdit(id) {
 function startOtherMaterialEdit(record) {
   const form = document.querySelector('form[data-form="otherMaterials"]');
   if (!form) return;
-  switchToView("otherMaterials");
+  switchToView("entries");
+  activateEntryTab("order");
+  activateEntryOrderMode("Diğer");
   form.dataset.editId = record.id;
   resetOtherOrderForm();
   Object.entries(record).forEach(([key, value]) => {
@@ -1195,21 +1297,43 @@ function switchToView(viewId) {
   document.getElementById("pageTitle").textContent = button.textContent;
 }
 
+function activateEntryTab(tab) {
+  if (!tab) return;
+  document.querySelector(`[data-entry-tab="${tab}"]`)?.click();
+}
+
+function activateEntryOrderMode(mode) {
+  document.querySelector(`[data-entry-order-mode="${mode}"]`)?.click();
+}
+
 function viewForTable(table) {
   return {
-    tasks: "tasks",
+    reports: "entries",
+    personnel: "entries",
+    materials: "entries",
+    documents: "entries",
+    users: "entries",
     calendarEvents: "calendar",
-    reports: "reports",
+  }[table] || "entries";
+}
+
+function entryTabForTable(table) {
+  return {
+    sites: "site",
+    reports: "report",
     personnel: "personnel",
-    materials: "materials",
-    documents: "documents",
-  }[table] || table;
+    documents: "document",
+    users: "user",
+    materials: "order",
+  }[table] || "";
 }
 
 function startSiteEdit(id) {
   const site = state.sites.find((item) => item.id === id);
   if (!site) return;
   const form = document.querySelector('form[data-form="sites"]');
+  switchToView("entries");
+  activateEntryTab("site");
   form.dataset.editId = id;
   Object.entries(site).forEach(([key, value]) => {
     const field = form.elements.namedItem(key);
@@ -1218,7 +1342,7 @@ function startSiteEdit(id) {
   document.getElementById("siteFormTitle").textContent = "Şantiye Düzenle";
   document.getElementById("siteSubmitBtn").textContent = "Değişiklikleri Kaydet";
   document.getElementById("siteCancelEditBtn").classList.remove("hidden");
-  document.getElementById("sites").scrollIntoView({ behavior: "smooth", block: "start" });
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function clearSiteEditMode() {

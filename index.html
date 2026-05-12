@@ -22,17 +22,12 @@
 
         <nav class="nav" aria-label="Panel menüsü">
           <button class="nav-item active" data-view="dashboard">Genel Bakış</button>
-          <button class="nav-item" data-view="projects">Projeler</button>
           <button class="nav-item" data-view="sites">Şantiyeler</button>
-          <button class="nav-item" data-view="tasks">Görevler</button>
-          <button class="nav-item" data-view="reports">Günlük Rapor</button>
-          <button class="nav-item" data-view="payments">Hakediş</button>
+          <button class="nav-item" data-view="materials">Siparişler</button>
+          <button class="nav-item" data-view="calendar">Takvim</button>
           <button class="nav-item" data-view="personnel">Personel</button>
-          <button class="nav-item" data-view="materials">Beton ve Demir Siparişi</button>
-          <button class="nav-item" data-view="otherMaterials">Diğer Siparişler</button>
-          <button class="nav-item" data-view="documents">Fotoğraf & PDF</button>
-          <button class="nav-item" data-view="calendar">Takvim / Gantt</button>
-          <button class="nav-item" data-view="users">Kullanıcılar</button>
+          <button class="nav-item" data-view="entries">Kayıt Giriş</button>
+          <button class="nav-item" data-view="payments">Hakediş</button>
           <button class="nav-item" data-view="settings">Ayarlar</button>
         </nav>
 
@@ -146,7 +141,8 @@
         </section>
 
         <section class="view" id="sites">
-          <div class="split stacked-panels">
+          <div class="site-tabs" id="siteTabs"></div>
+          <div class="split stacked-panels entry-source">
             <form class="panel form-panel site-form" data-form="sites">
               <h2 id="siteFormTitle">Şantiye Ekle</h2>
               <label>Bağlı proje<select name="projectId" data-project-select required></select></label>
@@ -238,7 +234,7 @@
             <label class="personnel-site-filter">Puantaj şantiyesi<select id="personnelSiteFilter" data-site-select required></select></label>
           </div>
 
-          <div class="personnel-entry">
+          <div class="personnel-entry entry-source">
             <form class="panel form-panel personnel-form" data-form="personnel">
               <h2>Personel Yoklama</h2>
               <label>Proje<select name="projectId" data-project-select required></select></label>
@@ -275,6 +271,7 @@
               <div class="segmented-control" aria-label="Sipariş türü">
                 <button class="active" id="concreteOrderBtn" type="button">Beton</button>
                 <button id="rebarOrderBtn" type="button">Demir</button>
+                <button id="otherOrderBtn" type="button">Diğer</button>
               </div>
               <label class="order-site-filter">Şantiye filtresi<select id="orderSiteFilter" data-site-select></select></label>
             </div>
@@ -298,7 +295,7 @@
                 </div>
               </div>
               <button class="secondary rebar-field hidden" id="addRebarLineBtn" type="button">Çap Satırı Ekle</button>
-              <label>Durum<input name="status" type="hidden" value="Sipariş verildi" /><span class="status-buttons" id="orderStatusButtons"><button class="secondary active-action" type="button" data-form-status="Sipariş verildi">Sipariş verildi</button><button class="secondary" type="button" data-form-status="Ertelendi">Ertelendi</button><button class="secondary" type="button" data-form-status="Tamamlandı">Tamamlandı</button></span></label>
+              <label>Durum<select name="status"><option>Sipariş verildi</option><option>Ertelendi</option><option>Tamamlandı</option></select></label>
               <label>Not<textarea name="notes" rows="2"></textarea></label>
               <button class="primary" id="orderSubmitBtn" type="submit">Beton Siparişini Kaydet</button>
             </form>
@@ -310,7 +307,7 @@
         </section>
 
         <section class="view" id="otherMaterials">
-          <div class="split stacked-panels">
+          <div class="split stacked-panels entry-source">
             <div class="order-toolbar">
               <label class="order-site-filter">Şantiye filtresi<select id="otherOrderSiteFilter" data-site-select></select></label>
             </div>
@@ -322,7 +319,7 @@
               <label>Şantiye<select name="siteId" data-site-select required></select></label>
               <label>İlgili firma<input name="company" /></label>
               <label>Yetkili kişi<input name="contact" /></label>
-              <label>Durum<input name="status" type="hidden" value="Sipariş verildi" /><span class="status-buttons" id="otherOrderStatusButtons"><button class="secondary active-action" type="button" data-other-form-status="Sipariş verildi">Sipariş verildi</button><button class="secondary" type="button" data-other-form-status="Ertelendi">Ertelendi</button><button class="secondary" type="button" data-other-form-status="Sevkiyatta">Sevkiyatta</button><button class="secondary" type="button" data-other-form-status="Teslim alındı">Teslim alındı</button></span></label>
+              <label>Durum<select name="status"><option>Sipariş verildi</option><option>Ertelendi</option><option>Sevkiyatta</option><option>Teslim alındı</option></select></label>
               <label>Malzeme satırları</label>
               <div class="other-order-lines" id="otherOrderLines">
                 <div class="other-order-line">
@@ -342,8 +339,30 @@
           </div>
         </section>
 
+        <section class="view" id="entries">
+          <div class="entry-tabs">
+            <button class="active" type="button" data-entry-tab="site">Şantiye Kayıt</button>
+            <button type="button" data-entry-tab="report">Rapor Kayıt</button>
+            <button type="button" data-entry-tab="order">Sipariş Kayıt</button>
+            <button type="button" data-entry-tab="personnel">Personel Kayıt</button>
+            <button type="button" data-entry-tab="document">Evrak Kayıt</button>
+            <button type="button" data-entry-tab="user">Kullanıcı Kayıt</button>
+          </div>
+          <div class="entry-panel active" id="entry-site"></div>
+          <div class="entry-panel" id="entry-report"></div>
+          <div class="entry-panel" id="entry-order">
+            <div class="entry-order-grid">
+              <div id="entry-order-main"></div>
+              <div id="entry-order-other"></div>
+            </div>
+          </div>
+          <div class="entry-panel" id="entry-personnel"></div>
+          <div class="entry-panel" id="entry-document"></div>
+          <div class="entry-panel" id="entry-user"></div>
+        </section>
+
         <section class="view" id="documents">
-          <div class="split">
+          <div class="split entry-source">
             <form class="panel form-panel" data-form="documents">
               <h2>Fotoğraf / PDF Ekle</h2>
               <label>Proje<select name="projectId" data-project-select required></select></label>
@@ -416,7 +435,7 @@
         </section>
 
         <section class="view" id="users">
-          <div class="split">
+          <div class="split entry-source">
             <form class="panel form-panel" data-form="users">
               <h2>Kullanıcı Ekle</h2>
               <label>Ad soyad<input name="name" required /></label>
@@ -459,6 +478,6 @@
         <div id="eventModalBody"></div>
       </div>
     </div>
-    <script src="./app.js"></script>
+    <script src="./app.js?v=20260512-layout"></script>
   </body>
 </html>
