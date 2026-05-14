@@ -71,6 +71,7 @@ let selectedSiteId = "";
 let personnelMode = "Sigortalı";
 let materialMode = "Beton";
 let orderListMode = "Beton";
+let activeEntryTab = "site";
 
 document.addEventListener("DOMContentLoaded", () => {
   setupEntryPanels();
@@ -125,7 +126,35 @@ function bindNavigation() {
         renderSiteTabs();
         renderSiteDetail();
       }
+      renderNavSubmenus();
     });
+  });
+
+  document.getElementById("siteNavSubmenu").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-site-nav]");
+    if (!button) return;
+    selectedSiteId = button.dataset.siteNav;
+    switchToView("sites");
+    renderSiteTabs();
+    renderSiteDetail();
+    renderNavSubmenus();
+  });
+
+  document.getElementById("orderNavSubmenu").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-order-nav]");
+    if (!button) return;
+    orderListMode = button.dataset.orderNav;
+    switchToView("materials");
+    renderMaterials();
+    renderNavSubmenus();
+  });
+
+  document.getElementById("entryNavSubmenu").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-entry-nav]");
+    if (!button) return;
+    switchToView("entries");
+    activateEntryTab(button.dataset.entryNav);
+    renderNavSubmenus();
   });
 
   document.getElementById("refreshBtn").addEventListener("click", syncFromRemote);
@@ -166,10 +195,12 @@ function setupEntryPanels() {
 function bindEntryTabs() {
   document.querySelectorAll("[data-entry-tab]").forEach((button) => {
     button.addEventListener("click", () => {
+      activeEntryTab = button.dataset.entryTab;
       document.querySelectorAll("[data-entry-tab]").forEach((item) => item.classList.remove("active"));
       document.querySelectorAll(".entry-panel").forEach((item) => item.classList.remove("active"));
       button.classList.add("active");
       document.getElementById(`entry-${button.dataset.entryTab}`)?.classList.add("active");
+      renderNavSubmenus();
     });
   });
   document.querySelectorAll("[data-entry-order-mode]").forEach((button) => {
@@ -346,6 +377,7 @@ function bindTableActions() {
       selectedSiteId = openSiteButton.dataset.openSite;
       renderSiteTabs();
       renderSiteDetail();
+      renderNavSubmenus();
       document.getElementById("siteDetailPanel").scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
@@ -355,6 +387,7 @@ function bindTableActions() {
       selectedSiteId = siteTabButton.dataset.siteTab;
       renderSiteTabs();
       renderSiteDetail();
+      renderNavSubmenus();
       return;
     }
 
@@ -393,14 +426,17 @@ function bindOrderControls() {
   onClick("concreteOrderBtn", () => {
     orderListMode = "Beton";
     renderMaterials();
+    renderNavSubmenus();
   });
   onClick("rebarOrderBtn", () => {
     orderListMode = "Demir";
     renderMaterials();
+    renderNavSubmenus();
   });
   onClick("otherOrderBtn", () => {
     orderListMode = "Diğer";
     renderMaterials();
+    renderNavSubmenus();
   });
   onChange("orderSiteFilter", renderMaterials);
   onClick("addRebarLineBtn", () => addRebarLine());
@@ -564,6 +600,7 @@ function render() {
   renderMetrics();
   renderTables();
   renderSiteTabs();
+  renderNavSubmenus();
   renderMaterials();
   renderOtherMaterials();
   renderPersonnel();
@@ -656,6 +693,28 @@ function renderSiteTabs() {
   target.innerHTML = state.sites.length
     ? state.sites.map((site) => `<button class="${site.id === selectedSiteId ? "active" : ""}" type="button" data-site-tab="${escapeHtml(site.id)}">${escapeHtml(site.name)}</button>`).join("")
     : `<div class="empty-state">Henüz kayıtlı şantiye yok. Kayıt Giriş bölümünden şantiye ekleyebilirsin.</div>`;
+}
+
+function renderNavSubmenus() {
+  const activeView = document.querySelector(".nav-item.active")?.dataset.view || "dashboard";
+  document.querySelectorAll(".nav-submenu").forEach((item) => item.classList.remove("open"));
+  document.getElementById("siteNavSubmenu")?.classList.toggle("open", activeView === "sites");
+  document.getElementById("orderNavSubmenu")?.classList.toggle("open", activeView === "materials");
+  document.getElementById("entryNavSubmenu")?.classList.toggle("open", activeView === "entries");
+
+  const siteMenu = document.getElementById("siteNavSubmenu");
+  if (siteMenu) {
+    siteMenu.innerHTML = state.sites.length
+      ? state.sites.map((site) => `<button class="${site.id === selectedSiteId ? "active" : ""}" type="button" data-site-nav="${escapeHtml(site.id)}">${escapeHtml(site.name)}</button>`).join("")
+      : `<span class="nav-sub-empty">Kayıtlı şantiye yok</span>`;
+  }
+
+  document.querySelectorAll("[data-order-nav]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.orderNav === orderListMode);
+  });
+  document.querySelectorAll("[data-entry-nav]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.entryNav === activeEntryTab);
+  });
 }
 
 function renderMaterials() {
@@ -1308,6 +1367,7 @@ function switchToView(viewId) {
   button.classList.add("active");
   view.classList.add("active");
   document.getElementById("pageTitle").textContent = button.textContent;
+  renderNavSubmenus();
 }
 
 function activateEntryTab(tab) {

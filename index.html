@@ -23,10 +23,24 @@
         <nav class="nav" aria-label="Panel menüsü">
           <button class="nav-item active" data-view="dashboard">Genel Bakış</button>
           <button class="nav-item" data-view="sites">Şantiyeler</button>
+          <div class="nav-submenu" id="siteNavSubmenu"></div>
           <button class="nav-item" data-view="materials">Siparişler</button>
+          <div class="nav-submenu" id="orderNavSubmenu">
+            <button type="button" data-order-nav="Beton">Beton</button>
+            <button type="button" data-order-nav="Demir">Demir</button>
+            <button type="button" data-order-nav="Diğer">Diğer</button>
+          </div>
           <button class="nav-item" data-view="calendar">Takvim</button>
           <button class="nav-item" data-view="personnel">Personel</button>
           <button class="nav-item" data-view="entries">Kayıt Giriş</button>
+          <div class="nav-submenu" id="entryNavSubmenu">
+            <button type="button" data-entry-nav="site">Şantiye Kayıt</button>
+            <button type="button" data-entry-nav="report">Rapor Kayıt</button>
+            <button type="button" data-entry-nav="order">Sipariş Kayıt</button>
+            <button type="button" data-entry-nav="personnel">Personel Kayıt</button>
+            <button type="button" data-entry-nav="document">Evrak Kayıt</button>
+            <button type="button" data-entry-nav="user">Kullanıcı Kayıt</button>
+          </div>
           <button class="nav-item" data-view="payments">Hakediş</button>
           <button class="nav-item" data-view="settings">Ayarlar</button>
         </nav>
@@ -479,6 +493,6 @@
         <div id="eventModalBody"></div>
       </div>
     </div>
-    <script src="./app.js?v=20260514-docs-tabs"></script>
+    <script src="./app.js?v=20260514-nested-nav"></script>
   </body>
 </html>
