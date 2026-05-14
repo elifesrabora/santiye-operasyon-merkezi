@@ -382,12 +382,17 @@ table {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  padding: 10px;
   margin-bottom: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-muted);
 }
 
 .site-tabs button,
 .entry-tabs button,
-.entry-order-tabs button {
+.entry-order-tabs button,
+#materials .segmented-control button {
   border: 1px solid var(--line);
   background: #ffffff;
   color: var(--muted);
@@ -398,10 +403,18 @@ table {
 
 .site-tabs button.active,
 .entry-tabs button.active,
-.entry-order-tabs button.active {
+.entry-order-tabs button.active,
+#materials .segmented-control button.active {
   background: var(--primary);
   border-color: var(--primary);
   color: #ffffff;
+}
+
+#materials .order-toolbar {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-muted);
 }
 
 .entry-panel {

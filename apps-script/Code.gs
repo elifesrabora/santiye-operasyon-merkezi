@@ -10,7 +10,7 @@ const SCHEMA = {
   payments: ["id", "createdAt", "createdBy", "projectId", "period", "amount", "status", "notes"],
   personnel: ["id", "createdAt", "createdBy", "projectId", "siteId", "date", "personType", "name", "attendance", "job"],
   materials: ["id", "createdAt", "createdBy", "projectId", "siteId", "date", "name", "deliveryNo", "spec", "concreteClass", "diameter", "pourArea", "quantity", "unit", "company", "contact", "supplier", "unitPrice", "total", "status", "notes"],
-  documents: ["id", "createdAt", "createdBy", "projectId", "siteId", "title", "fileName", "fileUrl", "mimeType", "notes", "type"],
+  documents: ["id", "createdAt", "createdBy", "projectId", "siteId", "date", "title", "fileName", "fileUrl", "mimeType", "notes", "type"],
   users: ["email", "name", "role", "status", "permissions", "id", "createdAt", "createdBy", "username"],
 };
 

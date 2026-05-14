@@ -46,7 +46,7 @@ const TABLES = {
   payments: ["projectId", "period", "amount", "status", "notes"],
   personnel: ["projectId", "siteId", "date", "personType", "name", "job", "attendance"],
   materials: ["projectId", "siteId", "date", "name", "deliveryNo", "concreteClass", "diameter", "pourArea", "quantity", "unit", "company", "contact", "status", "notes"],
-  documents: ["projectId", "siteId", "title", "type", "fileName", "fileUrl", "mimeType", "notes"],
+  documents: ["projectId", "siteId", "date", "title", "type", "fileName", "fileUrl", "mimeType", "notes"],
   users: ["name", "username", "email", "role", "status", "permissions"],
 };
 
@@ -59,7 +59,7 @@ const TABLE_LABELS = {
   payments: ["Proje", "Dönem", "Tutar", "Durum", "Not"],
   personnel: ["Proje", "Şantiye", "Tarih", "Tip", "İsim", "Meslek/Ekip", "Durum"],
   materials: ["Proje", "Şantiye", "Tarih", "Tür", "İrsaliye", "Beton sınıfı", "Çap", "Dökülecek alan", "Miktar", "Birim", "Firma", "Yetkili", "Durum", "Not"],
-  documents: ["Proje", "Şantiye", "Başlık", "Tür", "Dosya", "Bağlantı", "Mime", "Açıklama"],
+  documents: ["Proje", "Şantiye", "Tarih", "Başlık", "Tür", "Dosya", "Bağlantı", "Mime", "Açıklama"],
   users: ["Ad", "Kullanıcı", "E-posta", "Rol", "Durum", "İzinler"],
 };
 
@@ -390,32 +390,42 @@ function bindTableActions() {
 }
 
 function bindOrderControls() {
-  document.getElementById("concreteOrderBtn")?.addEventListener("click", () => {
+  onClick("concreteOrderBtn", () => {
     orderListMode = "Beton";
     renderMaterials();
   });
-  document.getElementById("rebarOrderBtn")?.addEventListener("click", () => {
+  onClick("rebarOrderBtn", () => {
     orderListMode = "Demir";
     renderMaterials();
   });
-  document.getElementById("otherOrderBtn")?.addEventListener("click", () => {
+  onClick("otherOrderBtn", () => {
     orderListMode = "Diğer";
     renderMaterials();
   });
-  document.getElementById("orderSiteFilter")?.addEventListener("change", renderMaterials);
-  document.getElementById("addRebarLineBtn")?.addEventListener("click", () => addRebarLine());
-  document.getElementById("orderStatusButtons")?.addEventListener("click", (event) => {
+  onChange("orderSiteFilter", renderMaterials);
+  onClick("addRebarLineBtn", () => addRebarLine());
+  onClick("orderStatusButtons", (event) => {
     const button = event.target.closest("[data-form-status]");
     if (!button) return;
     setOrderFormStatus(button.dataset.formStatus);
   });
-  document.getElementById("otherOrderSiteFilter")?.addEventListener("change", renderOtherMaterials);
-  document.getElementById("addOtherOrderLineBtn")?.addEventListener("click", () => addOtherOrderLine());
-  document.getElementById("otherOrderStatusButtons")?.addEventListener("click", (event) => {
+  onChange("otherOrderSiteFilter", renderOtherMaterials);
+  onClick("addOtherOrderLineBtn", () => addOtherOrderLine());
+  onClick("otherOrderStatusButtons", (event) => {
     const button = event.target.closest("[data-other-form-status]");
     if (!button) return;
     setOtherOrderFormStatus(button.dataset.otherFormStatus);
   });
+}
+
+function onClick(id, handler) {
+  const element = document.getElementById(id);
+  if (element) element.addEventListener("click", handler);
+}
+
+function onChange(id, handler) {
+  const element = document.getElementById(id);
+  if (element) element.addEventListener("change", handler);
 }
 
 function bindPersonnelControls() {
@@ -524,6 +534,9 @@ async function formToRecord(form, table) {
   }
 
   if (table === "documents") {
+    if (record.siteId) {
+      record.projectId = state.sites.find((site) => site.id === record.siteId)?.projectId || record.projectId;
+    }
     const file = formData.get("file");
     if (file && file.size) {
       record.fileName = file.name;
@@ -1168,7 +1181,7 @@ function siteDetailRows(groupId, table, title, rows) {
 function siteDetailFields(table) {
   const preferred = {
     reports: ["date", "workDone", "attachmentName"],
-    documents: ["title", "type", "fileName", "notes"],
+    documents: ["date", "title", "type", "fileName"],
     tasks: ["title", "dueDate", "status", "notes"],
     calendarEvents: ["date", "title", "status", "notes"],
     personnel: ["date", "name", "job", "attendance"],
