@@ -381,6 +381,12 @@ function bindTableActions() {
       return;
     }
 
+    const deleteRecordButton = event.target.closest("[data-delete-record]");
+    if (deleteRecordButton) {
+      deleteRecord(deleteRecordButton.dataset.deleteTable, deleteRecordButton.dataset.deleteRecord);
+      return;
+    }
+
     const detailToggle = event.target.closest("[data-site-detail-toggle]");
     if (detailToggle) {
       toggleSiteDetailGroup(detailToggle.dataset.siteDetailToggle);
@@ -907,15 +913,15 @@ function renderPersonnel() {
   const month = monthStart.getMonth();
   const days = new Date(year, month + 1, 0).getDate();
   const type = personnelMode;
-  const records = state.personnel.filter((item) => personnelType(item) === type && item.siteId === selectedSite);
+  const records = state.personnel.filter((item) => personnelType(item) === type && sameId(item.siteId, selectedSite));
   const names = personnelNames(records, type);
   const header = Array.from({ length: days }, (_, index) => `<div class="personnel-head">${index + 1}</div>`).join("");
   const rows = names
     .map((name) => {
       const cells = Array.from({ length: days }, (_, index) => {
         const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(index + 1).padStart(2, "0")}`;
-        const record = records.find((item) => item.name === name && item.date === date);
-        const attendance = record?.attendance || "";
+        const record = records.find((item) => samePersonnelName(item.name, name) && item.date === date);
+        const attendance = normalizeAttendance(record?.attendance || "");
         return `<button class="attendance-cell ${attendanceClass(attendance)}" type="button" data-attendance-cell data-name="${escapeHtml(name)}" data-date="${date}" title="${escapeHtml(name)} - ${date}">${escapeHtml(attendanceLabel(attendance))}</button>`;
       }).join("");
       return `<div class="personnel-name">${escapeHtml(name)}</div>${cells}`;
@@ -998,31 +1004,52 @@ function updatePersonnelAttendance(name, date) {
 }
 
 function findPersonnelIndex(name, date, type, siteId) {
-  return state.personnel.findIndex((item) => item.name === name && item.date === date && personnelType(item) === type && item.siteId === siteId);
+  return state.personnel.findIndex((item) => samePersonnelName(item.name, name) && item.date === date && personnelType(item) === type && sameId(item.siteId, siteId));
 }
 
 function nextAttendance(current) {
-  if (current === "Geldi") return "Gelmedi";
-  if (current === "Gelmedi") return "";
+  const normalized = normalizeAttendance(current);
+  if (normalized === "Geldi") return "Gelmedi";
+  if (normalized === "Gelmedi") return "";
   return "Geldi";
 }
 
 function attendanceClass(attendance) {
+  const normalized = normalizeAttendance(attendance);
   return {
     Geldi: "present",
     Gelmedi: "absent",
     İzinli: "leave",
     Raporlu: "leave",
-  }[attendance] || "";
+  }[normalized] || "";
 }
 
 function attendanceLabel(attendance) {
+  const normalized = normalizeAttendance(attendance);
   return {
     Geldi: "G",
     Gelmedi: "Y",
     İzinli: "İ",
     Raporlu: "R",
-  }[attendance] || "";
+  }[normalized] || "";
+}
+
+function normalizeAttendance(value) {
+  const normalized = String(value || "").trim().toLocaleLowerCase("tr-TR");
+  return {
+    geldi: "Geldi",
+    gelmedi: "Gelmedi",
+    izinli: "İzinli",
+    raporlu: "Raporlu",
+  }[normalized] || "";
+}
+
+function samePersonnelName(left, right) {
+  return String(left || "").trim().toLocaleLowerCase("tr-TR") === String(right || "").trim().toLocaleLowerCase("tr-TR");
+}
+
+function sameId(left, right) {
+  return String(left || "").trim() === String(right || "").trim();
 }
 
 function singular(table) {
@@ -1043,7 +1070,7 @@ function singular(table) {
 function tableMarkup(table, rows) {
   const labels = TABLE_LABELS[table];
   const fields = TABLES[table];
-  const hasActions = table === "sites" || table === "materials";
+  const hasActions = table === "sites" || table === "materials" || table === "documents";
   const head = `${labels.map((label) => `<th>${label}</th>`).join("")}${hasActions ? "<th>İşlem</th>" : ""}`;
   const body = rows.length
     ? rows
@@ -1074,7 +1101,27 @@ function tableActions(table, row) {
       </div>
     `;
   }
+  if (table === "documents") {
+    return `
+      <div class="row-actions">
+        <button class="secondary table-action" type="button" data-edit-table="documents" data-edit-record="${escapeHtml(row.id)}">Düzenle</button>
+        <button class="secondary table-action danger-action" type="button" data-delete-table="documents" data-delete-record="${escapeHtml(row.id)}">Sil</button>
+      </div>
+    `;
+  }
   return "";
+}
+
+function deleteRecord(table, id) {
+  if (!table || !id || !state[table]) return;
+  const record = state[table].find((item) => item.id === id);
+  const label = record?.title || record?.name || "Bu kayıt";
+  if (!window.confirm(`${label} silinsin mi?`)) return;
+  state[table] = state[table].filter((item) => item.id !== id);
+  saveState();
+  render();
+  toast("Kayıt silindi.");
+  syncDelete(table, id);
 }
 
 function updateOrderStatus(id, status) {
@@ -1178,6 +1225,7 @@ function siteDetailRows(groupId, table, title, rows) {
               <div class="related-actions">
                 ${siteDetailLinks(table, row)}
                 <button class="secondary table-action" type="button" data-edit-table="${escapeHtml(table)}" data-edit-record="${escapeHtml(row.id)}">Düzenle</button>
+                ${table === "documents" ? `<button class="secondary table-action danger-action" type="button" data-delete-table="documents" data-delete-record="${escapeHtml(row.id)}">Sil</button>` : ""}
               </div>
             </div>
           `;
@@ -1660,6 +1708,17 @@ async function syncRecord(table, record) {
   } catch (error) {
     document.getElementById("syncDot").className = "sync-dot error";
     toast(`Senkron hatası: ${error.message}`);
+  }
+}
+
+async function syncDelete(table, id) {
+  if (!settings.apiUrl) return;
+  try {
+    await apiRequest({ action: "delete", table, id });
+    toast("Silme işlemi Google Sheets ile senkronize edildi.");
+  } catch (error) {
+    document.getElementById("syncDot").className = "sync-dot error";
+    toast(`Silme senkron hatası: ${error.message}`);
   }
 }
 

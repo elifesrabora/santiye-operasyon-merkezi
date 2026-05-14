@@ -31,6 +31,12 @@ function doPost(event) {
       return json_({ ok: true, record });
     }
 
+    if (payload.action === "delete") {
+      assertCanWrite_(spreadsheetId, payload.user, payload.table);
+      delete_(spreadsheetId, payload.table, payload.id);
+      return json_({ ok: true });
+    }
+
     return json_({ ok: false, error: "Bilinmeyen action." });
   } catch (error) {
     return json_({ ok: false, error: error.message });
@@ -111,6 +117,15 @@ function upsert_(spreadsheetId, driveFolderId, table, record) {
   }
 
   return cleanRecord;
+}
+
+function delete_(spreadsheetId, table, id) {
+  if (!SCHEMA[table]) throw new Error("Geçersiz tablo: " + table);
+  if (!id) throw new Error("Silinecek kayıt id bilgisi eksik.");
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  const sheet = ss.getSheetByName(table);
+  const row = table === "users" ? findRowByFirstColumn_(sheet, id) : findRowById_(sheet, id);
+  if (row > 0) sheet.deleteRow(row);
 }
 
 function saveFile_(driveFolderId, record) {

@@ -212,6 +212,11 @@ h2 {
   border-color: var(--line);
 }
 
+.danger-action {
+  color: var(--danger);
+  border-color: #f0c6c6;
+}
+
 input,
 select,
 textarea {
