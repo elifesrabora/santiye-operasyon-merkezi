@@ -357,7 +357,12 @@
             </div>
           </div>
           <div class="entry-panel" id="entry-personnel"></div>
-          <div class="entry-panel" id="entry-document"></div>
+          <div class="entry-panel" id="entry-document">
+            <section class="panel table-panel">
+              <div class="panel-header"><h2>Evrak Arşivi</h2><span id="documentCount">0 kayıt</span></div>
+              <div class="table-wrap"><table id="documentsTable"></table></div>
+            </section>
+          </div>
           <div class="entry-panel" id="entry-user"></div>
         </section>
 
@@ -375,10 +380,6 @@
               <label>Açıklama / Not<textarea name="notes" rows="3"></textarea></label>
               <button class="primary" type="submit">Evrakı Kaydet</button>
             </form>
-            <section class="panel table-panel">
-              <div class="panel-header"><h2>Dosya Arşivi</h2><span id="documentCount">0 kayıt</span></div>
-              <div class="table-wrap"><table id="documentsTable"></table></div>
-            </section>
           </div>
         </section>
 
@@ -479,6 +480,6 @@
         <div id="eventModalBody"></div>
       </div>
     </div>
-    <script src="./app.js?v=20260514-fixes"></script>
+    <script src="./app.js?v=20260514-doc-save"></script>
   </body>
 </html>

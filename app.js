@@ -284,32 +284,43 @@ function bindForms() {
       }
       const item = await formToRecord(form, table);
       const editId = form.dataset.editId;
+      const stateItem = persistableRecord(item);
       if (editId) {
         const existingIndex = state[table].findIndex((record) => record.id === editId);
         if (existingIndex >= 0) {
+          stateItem.id = editId;
           item.id = editId;
+          stateItem.createdAt = state[table][existingIndex].createdAt;
           item.createdAt = state[table][existingIndex].createdAt;
+          stateItem.createdBy = state[table][existingIndex].createdBy;
           item.createdBy = state[table][existingIndex].createdBy;
-          state[table][existingIndex] = item;
+          state[table][existingIndex] = stateItem;
         }
       } else if (table === "personnel") {
         const existingIndex = findPersonnelIndex(item.name, item.date, item.personType, item.siteId);
         if (existingIndex >= 0) {
           item.id = state.personnel[existingIndex].id;
+          stateItem.id = item.id;
           item.createdAt = state.personnel[existingIndex].createdAt;
+          stateItem.createdAt = item.createdAt;
           item.createdBy = state.personnel[existingIndex].createdBy;
-          state.personnel[existingIndex] = item;
+          stateItem.createdBy = item.createdBy;
+          state.personnel[existingIndex] = stateItem;
         } else {
-          state[table].push(item);
+          state[table].push(stateItem);
         }
       } else {
-        state[table].push(item);
+        state[table].push(stateItem);
       }
       if (table === "documents" && item.siteId) selectedSiteId = item.siteId;
       if (table === "sites") selectedSiteId = item.id;
       saveState();
       render();
       form.reset();
+      if (table === "documents") {
+        activateEntryTab("document");
+        renderSiteDetail();
+      }
       if (table === "sites") {
         clearSiteEditMode();
       } else {
@@ -320,6 +331,11 @@ function bindForms() {
       syncRecord(table, item);
     });
   });
+}
+
+function persistableRecord(record) {
+  if (!record.fileData) return { ...record };
+  return { ...record, fileData: "" };
 }
 
 function bindTableActions() {
