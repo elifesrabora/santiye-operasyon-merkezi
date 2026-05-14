@@ -336,11 +336,12 @@ function bindForms() {
       } else {
         state[table].push(item);
       }
+      if (table === "documents" && item.siteId) selectedSiteId = item.siteId;
+      if (table === "sites") selectedSiteId = item.id;
       saveState();
       render();
       form.reset();
       if (table === "sites") {
-        selectedSiteId = item.id;
         clearSiteEditMode();
       } else {
         clearFormEditMode(form);
@@ -511,7 +512,7 @@ function bindSettings() {
 }
 
 function setDefaultDates() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateString(new Date());
   document.querySelectorAll('input[type="date"]').forEach((input) => {
     if (!input.value) input.value = today;
   });
@@ -662,7 +663,7 @@ function renderSiteOptions() {
 }
 
 function renderMetrics() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateString(new Date());
   const todayPersonnel = state.personnel.filter((item) => item.date === today);
   const present = todayPersonnel.filter((item) => item.attendance === "Geldi").length;
   const openPayments = state.payments
@@ -1446,7 +1447,7 @@ function renderActivity() {
     ? reports.map((report) => activityItem(`${projectName(report.projectId)} / ${siteName(report.siteId)}`, `${report.date} - ${report.workDone}`)).join("")
     : activityItem("Henüz rapor yok", "Günlük rapor eklediğinde burada görünür.");
 
-  const tomorrow = addDays(new Date(), 1).toISOString().slice(0, 10);
+  const tomorrow = localDateString(addDays(new Date(), 1));
   const tomorrowEvents = state.calendarEvents
     .filter((item) => item.date === tomorrow && item.status !== "Tamamlandı")
     .sort((a, b) => siteName(a.siteId).localeCompare(siteName(b.siteId), "tr"));
@@ -1509,7 +1510,7 @@ function renderCalendar() {
 }
 
 function renderMonthCalendar(events) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateString(new Date());
   const start = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth(), 1);
   const days = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + 1, 0).getDate();
   const monthLabel = new Intl.DateTimeFormat("tr-TR", { month: "long", year: "numeric" }).format(start);
@@ -1520,7 +1521,7 @@ function renderMonthCalendar(events) {
 }
 
 function renderWeekCalendar(events) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateString(new Date());
   const weekStart = startOfWeek(calendarCursor);
   const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
   const formatter = new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "short" });
@@ -1537,7 +1538,7 @@ function renderCalendarMatrix(days, events, today) {
   const siteColumns = sites.map((site) => `<div class="calendar-matrix-head site-head">${escapeHtml(site.name)}</div>`).join("");
   const rows = days
     .map((date) => {
-      const iso = date.toISOString().slice(0, 10);
+      const iso = localDateString(date);
       const dayLabel = `${weekdayFormatter.format(date)} ${formatter.format(date)}`;
       const cells = sites
         .map((site) => {
@@ -1587,7 +1588,7 @@ function calendarEventButton(item) {
 }
 
 function renderUpcomingCalendarEvents(events) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateString(new Date());
   const upcoming = events
     .filter((item) => item.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -1667,6 +1668,13 @@ function addDays(date, days) {
   return copy;
 }
 
+function localDateString(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function startOfWeek(date) {
   const copy = new Date(date);
   const day = (copy.getDay() + 6) % 7;
@@ -1684,6 +1692,7 @@ async function syncRecord(table, record) {
       if (index >= 0) state.documents[index] = { ...state.documents[index], fileUrl: result.record.fileUrl, fileData: "" };
       saveState();
       renderTables();
+      renderSiteDetail();
     }
     if (table === "reports" && result.record?.attachmentUrl) {
       const index = state.reports.findIndex((item) => item.id === record.id);
