@@ -104,42 +104,6 @@ button {
   color: #ffffff;
 }
 
-.nav-submenu {
-  display: none;
-  gap: 4px;
-  margin: -2px 0 8px 14px;
-  padding-left: 12px;
-  border-left: 1px solid rgba(255, 255, 255, 0.18);
-}
-
-.nav-submenu.open {
-  display: grid;
-}
-
-.nav-submenu button {
-  width: 100%;
-  border: 0;
-  border-radius: 8px;
-  padding: 9px 12px;
-  background: transparent;
-  color: #b9cbc3;
-  text-align: left;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.nav-submenu button:hover,
-.nav-submenu button.active {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-}
-
-.nav-sub-empty {
-  color: #9fb2aa;
-  font-size: 12px;
-  padding: 8px 12px;
-}
-
 .sync-box {
   display: flex;
   gap: 10px;
@@ -459,13 +423,6 @@ table {
 
 .entry-panel.active {
   display: block;
-}
-
-#siteTabs,
-#entries > .entry-tabs,
-#entry-order > .entry-order-tabs,
-#materials .segmented-control {
-  display: none;
 }
 
 .entry-order-grid {
